@@ -12,6 +12,8 @@ resource "aws_instance" "nat_ingress" {
   ami           = var.ami_id
   instance_type = "t4g.nano"
 
+  iam_instance_profile = aws_iam_instance_profile.ssm_profile.name
+
   network_interface {
     network_interface_id = aws_network_interface.nat_ingress_eni.id
     device_index         = 0
@@ -19,6 +21,18 @@ resource "aws_instance" "nat_ingress" {
 
   user_data = <<-EOF
               #!/bin/bash
+              # Setup 2GB Swap Memory
+              dd if=/dev/zero of=/swapfile bs=128M count=16
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+
+              # Install and start SSM Agent
+              dnf install -y amazon-ssm-agent
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+
               # Enable IP Forwarding for NAT
               sysctl -w net.ipv4.ip_forward=1
               echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
@@ -40,7 +54,7 @@ resource "aws_instance" "nat_ingress" {
 
               # Create docker-compose.yaml from external file
               cat <<EOT > /home/ec2-user/docker-compose.yaml
-              ${file("${path.module}/docker-compose.nat-ingress.yaml")}
+              ${file("${path.module}/templates/docker-compose.nat-ingress.yaml")}
               EOT
 
               # Run containers

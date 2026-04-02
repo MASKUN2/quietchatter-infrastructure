@@ -31,5 +31,30 @@ variable "azs" {
 variable "ami_id" {
   description = "The AMI ID to use for EC2 instances (Amazon Linux 2023 ARM64)"
   type        = string
-  default     = "ami-0c2b29267104b2816" # Dummy AMI ID for validation in ap-northeast-2
+  default     = "ami-0e31683998cedb019" # Actual AL2023 ARM64 AMI in ap-northeast-2
+}
+
+variable "management_private_ip" {
+  description = "Static private IP for the Management Node"
+  type        = string
+  default     = "10.0.101.100"
+}
+
+variable "grafana_cloud_logs_url" {
+  description = "Grafana Cloud Loki (Logs) URL"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_cloud_metrics_url" {
+  description = "Grafana Cloud Prometheus (Metrics) URL"
+  type        = string
+  default     = ""
+}
+
+variable "grafana_cloud_api_key" {
+  description = "Grafana Cloud API Key"
+  type        = string
+  default     = ""
+  sensitive   = true
 }

@@ -13,7 +13,7 @@ output "api_gateway_private_ip" {
   description = "Private IP of the API Gateway instance"
 }
 
-output "persistence_private_ip" {
-  value       = aws_instance.persistence.private_ip
-  description = "Private IP of the Persistence instance"
+output "controlplane_private_ip" {
+  value       = aws_instance.controlplane.private_ip
+  description = "Private IP of the Control Plane instance"
 }

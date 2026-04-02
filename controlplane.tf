@@ -1,33 +1,48 @@
-resource "aws_ebs_volume" "persistence_data" {
+resource "aws_ebs_volume" "controlplane_data" {
   availability_zone = var.azs[0]
   size              = 15
   type              = "gp3"
 
   tags = {
-    Name = "quietchatter-persistence-data"
+    Name = "quietchatter-controlplane-data"
   }
 }
 
-resource "aws_volume_attachment" "persistence_att" {
-  device_name = "/dev/sdb"
-  volume_id   = aws_ebs_volume.persistence_data.id
-  instance_id = aws_instance.persistence.id
-  
-  # Ensure the instance is running before attaching, 
-  # but sometimes it's better to stop the instance for a clean attach.
-  # For now, we'll keep it simple.
+resource "aws_volume_attachment" "controlplane_att" {
+  device_name  = "/dev/sdb"
+  volume_id    = aws_ebs_volume.controlplane_data.id
+  instance_id  = aws_instance.controlplane.id
   force_detach = true
 }
 
-resource "aws_instance" "persistence" {
+resource "aws_instance" "controlplane" {
   ami           = var.ami_id
   instance_type = "t4g.small"
   subnet_id     = aws_subnet.private[0].id
 
-  vpc_security_group_ids = [aws_security_group.persistence.id]
+  vpc_security_group_ids = [aws_security_group.controlplane.id]
+  iam_instance_profile   = aws_iam_instance_profile.ssm_profile.name
 
   user_data = <<-EOF
               #!/bin/bash
+              # Setup 2GB Swap Memory
+              dd if=/dev/zero of=/swapfile bs=128M count=16
+              chmod 600 /swapfile
+              mkswap /swapfile
+              swapon /swapfile
+              echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+
+              # Wait for NAT to be available
+              until ping -c 1 8.8.8.8; do
+                echo "Waiting for NAT instance to be ready..."
+                sleep 5
+              done
+
+              # Install and start SSM Agent
+              dnf install -y amazon-ssm-agent
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
+
               # Wait for the EBS volume to be attached
               while [ ! -b /dev/nvme1n1 ]; do echo "Waiting for /dev/nvme1n1..."; sleep 2; done
 
@@ -52,7 +67,7 @@ resource "aws_instance" "persistence" {
               # Create docker-compose.yaml on the mounted volume
               mkdir -p /data/app
               cat <<EOT > /data/app/docker-compose.yaml
-              ${file("${path.module}/docker-compose.persistence.yaml")}
+              ${file("${path.module}/templates/docker-compose.controlplane.yaml")}
               EOT
 
               # Run containers from the mounted volume
@@ -65,7 +80,11 @@ resource "aws_instance" "persistence" {
     ignore_changes = [ami] # Don't replace on AMI updates to prevent data downtime
   }
 
+  depends_on = [
+    aws_route.private_nat_route
+  ]
+
   tags = {
-    Name = "quietchatter-persistence-node"
+    Name = "quietchatter-controlplane-node"
   }
 }
