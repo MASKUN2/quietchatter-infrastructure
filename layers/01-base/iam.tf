@@ -26,6 +26,26 @@ resource "aws_iam_role_policy_attachment" "ssm_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# Attach inline policy to allow reading from Secrets Manager
+resource "aws_iam_role_policy" "secrets_policy" {
+  name = "quietchatter-secrets-policy"
+  role = aws_iam_role.ssm_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Effect   = "Allow"
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # Create an Instance Profile to attach the role to EC2 instances
 resource "aws_iam_instance_profile" "ssm_profile" {
   name = "quietchatter-ssm-profile"

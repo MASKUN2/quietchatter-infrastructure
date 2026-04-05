@@ -71,9 +71,9 @@ resource "aws_security_group" "microservices" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port       = 0
-    to_port         = 65535
-    protocol        = "tcp"
+    from_port = 0
+    to_port   = 65535
+    protocol  = "tcp"
     security_groups = [
       aws_security_group.api_gateway.id
     ]
@@ -153,67 +153,5 @@ resource "aws_security_group" "controlplane" {
 
   tags = {
     Name = "quietchatter-controlplane-sg"
-  }
-}
-
-# Management Node Security Group
-resource "aws_security_group" "management" {
-  name        = "quietchatter-management-sg"
-  description = "Security group for Consul and Management services"
-  vpc_id      = aws_vpc.main.id
-
-  # Consul UI & HTTP API
-  ingress {
-    from_port   = 8500
-    to_port     = 8500
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  # Consul Server RPC
-  ingress {
-    from_port   = 8300
-    to_port     = 8300
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  # Consul Serf LAN (TCP/UDP)
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  # Consul DNS (TCP/UDP)
-  ingress {
-    from_port   = 8600
-    to_port     = 8600
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-  ingress {
-    from_port   = 8600
-    to_port     = 8600
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "quietchatter-management-sg"
   }
 }

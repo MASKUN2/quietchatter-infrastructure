@@ -1,0 +1,69 @@
+#!/bin/bash
+set -e
+
+# Setup 2GB Swap Memory
+dd if=/dev/zero of=/swapfile bs=128M count=16
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+
+# Wait for NAT to be available (Internet connectivity)
+until ping -c 1 8.8.8.8; do
+  echo "Waiting for NAT instance to be ready..."
+  sleep 5
+done
+
+# Fetch secrets from AWS Secrets Manager
+GRAFANA_API_KEY=$(aws secretsmanager get-secret-value --region ${aws_region} --secret-id ${grafana_api_key_secret_name} --query SecretString --output text)
+
+# Install and start SSM Agent
+dnf install -y amazon-ssm-agent
+systemctl enable amazon-ssm-agent
+systemctl start amazon-ssm-agent
+
+# Install Docker and Docker Compose
+dnf clean all
+dnf install docker -y || { sleep 5; dnf install docker -y; }
+systemctl enable docker
+systemctl start docker
+mkdir -p /usr/local/lib/docker/cli-plugins/
+curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+
+# Grafana Alloy 설치 및 설정
+cat << 'REPO' > /etc/yum.repos.d/grafana.repo
+[grafana]
+name=grafana
+baseurl=https://rpm.grafana.com
+repo_gpgcheck=1
+enabled=1
+gpgcheck=1
+gpgkey=https://rpm.grafana.com/gpg.key
+sslverify=1
+sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+REPO
+
+dnf install alloy -y
+
+# Allow Alloy to access Docker socket
+usermod -aG docker alloy
+
+cat <<'EOF' > /etc/alloy/config.alloy
+${alloy_config}
+EOF
+
+# Inject API Key as Environment Variable for Alloy Systemd Service
+echo "GRAFANA_API_KEY=$GRAFANA_API_KEY" >> /etc/sysconfig/alloy
+
+systemctl enable alloy
+systemctl start alloy
+
+# Create docker-compose.yaml from template
+cat <<EOF > /home/ec2-user/docker-compose.yaml
+${docker_compose_config}
+EOF
+
+# Run containers
+cd /home/ec2-user
+docker compose up -d

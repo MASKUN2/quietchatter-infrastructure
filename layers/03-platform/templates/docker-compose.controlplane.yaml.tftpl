@@ -1,3 +1,4 @@
+version: '3.8'
 services:
   # Consul for Service Discovery and Config
   consul:
@@ -20,12 +21,13 @@ services:
     restart: always
     environment:
       POSTGRES_DB: quietchatter
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: ${db_username}
+      POSTGRES_PASSWORD: $${DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
       - ./postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     deploy:
       resources:
         limits:

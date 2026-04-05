@@ -1,53 +1,54 @@
-# QuietChatter Infrastructure
+# QuietChatter Infrastructure (Layered)
 
-이 저장소는 quietchatter-project를 위한 테라폼 기반의 Infrastructure as Code (IaC) 설정을 포함하고 있습니다.
+이 저장소는 quietchatter-project를 위한 계층화된 테라폼 기반의 Infrastructure as Code (IaC) 설정을 포함하고 있습니다.
+단일 상태(State) 관리의 리스크를 줄이고, 변경 주기에 따라 인프라를 분리하여 운영 안정성을 높였습니다.
 
-## 아키텍처 개요
+## 프로젝트 구조 및 실행 순서
 
-본 인프라는 AWS에서 비용 효율적인 마이크로서비스 아키텍처(MSA)를 구축하도록 설계되었습니다. ARM 기반 인스턴스 사용과 통합 컨트롤 플레인을 통해 운영 비용을 최소화하는 데 집중합니다.
+인프라는 의존성에 따라 5개의 계층으로 분리되어 있으며, 아래 순서대로 실행해야 합니다.
 
-### 주요 설계 원칙
+| 순서 | 디렉토리 | 설명 | 주요 리소스 |
+| :--- | :--- | :--- | :--- |
+| 1 | `layers/01-base` | 기초 인프라 | VPC, Subnets, 모든 Security Groups, IAM Roles |
+| 2 | `layers/02-network-services` | 네트워크 연결성 | NAT Instance, Ingress NGINX, Private Routing |
+| 3 | `layers/03-platform` | 공통 플랫폼 | Control Plane (DB, Kafka, Consul), EBS Volume |
+| 4 | `layers/04-apps-gateway` | 서비스 게이트웨이 | API Gateway Instance (정적 IP 할당) |
+| 5 | `layers/05-apps-microservices`| 마이크로서비스 | Microservices ASG (Book, Member, Talk, Customer) |
 
-1. 비용 효율성 및 최적화:
-    - AWS t4g (ARM) 시리즈 인스턴스를 독점적으로 사용합니다.
-    - 관리형 NAT Gateway 대신 직접 구축한 NAT 인스턴스를 사용합니다.
-    - DB, Redis, Kafka, Consul을 하나의 controlplane 노드에 통합하여 비용을 절감합니다.
-    - 전 노드에 2GB 스왑 메모리를 설정하고, JVM 메모리 튜닝을 통해 저사양 인스턴스의 안정성을 확보합니다.
-2. 네트워크 보안 및 접속:
-    - 퍼블릭 및 프라이빗 서브넷으로 구성된 VPC를 사용합니다.
-    - 22번 포트(SSH)를 차단하고 AWS SSM Session Manager를 통해 보안 접속을 수행합니다.
-    - 외부 트래픽은 NGINX 리버스 프록시를 통해 프라이빗 노드로 라우팅됩니다.
-3. 서비스 관리 및 관측성:
-    - HashiCorp Consul을 이용해 서비스 디스커버리와 설정을 관리합니다.
-    - Grafana Cloud와 Grafana Alloy를 사용해 시스템 로그 및 메트릭을 통합 모니터링합니다.
+## 실행 방법
 
-## 인프라 구성 요소
+**[중요] 시크릿 통합 관리**: 데이터베이스 비밀번호, Grafana 토큰 등의 민감한 시크릿 정보는 오직 `layers/01-base`의 `terraform.tfvars` 파일에서만 정의합니다. 생성된 시크릿은 AWS Secrets Manager에 안전하게 보관되며, 하위 계층들은 부팅 시(User Data) 안전하게 시크릿을 조회합니다. 다른 계층에서는 변수 파일을 따로 관리할 필요가 없습니다.
+
+각 계층 디렉토리로 이동하여 다음 명령어를 순서대로 실행합니다.
+
+```bash
+# 1. 기초 인프라 및 시크릿(Secrets Manager) 생성
+cd layers/01-base
+terraform init
+terraform apply -auto-approve
+
+# 2. 하위 계층 순차 배포 (시크릿 파일 불필요)
+cd ../02-network-services
+terraform init
+terraform apply -auto-approve
+
+cd ../03-platform
+terraform init
+terraform apply -auto-approve
+... (순서대로 진행)
+```
+
+## 계층화 설계 원칙
+
+1. **상태 분리 (State Separation)**: 각 계층은 독립된 `terraform.tfstate`를 가집니다. 이를 통해 특정 마이크로서비스 변경 시 VPC나 데이터베이스가 영향받는 리스크를 방지합니다.
+2. **의존성 관리 (Remote State)**: 하위 계층은 `data "terraform_remote_state"`를 통해 상위 계층의 리소스 ID를 참조합니다.
+3. **순환 의존성 해제 (Decoupling)**: API Gateway와 Control Plane에 정적 프라이빗 IP를 할당하여, NAT/Ingress 인스턴스가 이들의 생성 완료를 기다리지 않고도 설정을 완료할 수 있도록 설계했습니다.
+
+## 구성 요소 정보
 
 | 구성 요소 | 인스턴스 타입 | 위치 | 설명 |
 | :--- | :--- | :--- | :--- |
-| NAT / Ingress 노드 | t4g.nano | 퍼블릭 | NAT 기능 및 NGINX 인그레스 라우팅 수행. |
-| controlplane 노드 | t4g.small | 프라이빗 | DB, Redis, Kafka, Consul이 통합된 핵심 노드. 15GB EBS 볼륨 사용. |
-| API Gateway 노드 | t4g.micro | 프라이빗 | Spring Cloud Gateway (JVM 최적화) 구동. 마이크로서비스 진입점. |
-| Application 노드 | t4g.micro | 프라이빗 | 각 마이크로서비스 (JVM 최적화) 구동 예정. |
-
-## 프로젝트 구조
-
-```text
-infrastructure/
-├── controlplane.tf             # 통합 컨트롤 플레인 (DB, Redis, Kafka, Consul) 설정
-├── nat_ingress.tf              # NAT 및 NGINX 인그레스 인스턴스 설정
-├── api_gateway.tf              # API 게이트웨이 인스턴스 설정
-├── security.tf                 # 보안 그룹 설정
-├── vpc.tf                      # VPC 및 네트워크 설정
-├── iam.tf                      # SSM 접속을 위한 IAM 권한 설정
-├── docs/                       # 인프라 전략 및 설계 문서
-└── templates/                  # 도커 컴포즈 등 노드 설정 템플릿
-```
-
-## 검증 방법
-
-```bash
-terraform init
-terraform validate
-terraform plan
-```
+| NAT / Ingress 노드 | t4g.nano | 퍼블릭 | NAT 기능 및 NGINX 인그레스 라우팅 (정적 IP 참조) |
+| controlplane 노드 | t4g.small | 프라이빗 | DB, Redis, Kafka, Consul 통합 노드 (정적 IP: 10.0.101.100) |
+| API Gateway 노드 | t4g.micro | 프라이빗 | Spring Cloud Gateway (정적 IP: 10.0.101.200) |
+| Microservices | t4g.micro | 프라이빗 | Auto Scaling Group을 통한 개별 서비스 배포 |

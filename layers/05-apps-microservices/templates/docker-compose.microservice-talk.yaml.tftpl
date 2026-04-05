@@ -1,0 +1,48 @@
+version: '3.8'
+services:
+  consul-agent:
+    image: hashicorp/consul:1.15
+    container_name: quietchatter-consul-agent
+    restart: always
+    command: "agent -join=${controlplane_ip} -data-dir=/consul/data -client=0.0.0.0"
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+
+  talk-service:
+    image: ${service_image}
+    container_name: quietchatter-talk
+    restart: always
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - CONSUL_HOST=consul-agent
+      - DB_HOST=${db_host}:5432/rdb-microservice-talk
+      - DB_USERNAME=${db_username}
+      - DB_PASSWORD=${db_password}
+      - KAFKA_BROKERS=${kafka_brokers}
+      - JAVA_OPTS=-Xms256m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss256k
+    ports:
+      - "8084:8080"
+    depends_on:
+      - consul-agent
+    deploy:
+      resources:
+        limits:
+          memory: 450M
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: quietchatter-watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=120
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+    deploy:
+      resources:
+        limits:
+          memory: 100M
