@@ -52,6 +52,21 @@ resource "aws_security_group" "api_gateway" {
     security_groups = [aws_security_group.nat_ingress.id]
   }
 
+  # Consul Serf LAN (Internal)
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -79,6 +94,14 @@ resource "aws_security_group" "microservices" {
     ]
   }
 
+  # Allow all internal traffic from VPC
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -102,7 +125,10 @@ resource "aws_security_group" "controlplane" {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [aws_security_group.microservices.id]
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
   }
 
   # Redis
@@ -110,7 +136,10 @@ resource "aws_security_group" "controlplane" {
     from_port       = 6379
     to_port         = 6379
     protocol        = "tcp"
-    security_groups = [aws_security_group.microservices.id]
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
   }
 
   # Redpanda (Kafka)
@@ -118,14 +147,30 @@ resource "aws_security_group" "controlplane" {
     from_port       = 9092
     to_port         = 9092
     protocol        = "tcp"
-    security_groups = [aws_security_group.microservices.id]
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
+  }
+
+  ingress {
+    from_port       = 19092
+    to_port         = 19092
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
   }
 
   ingress {
     from_port       = 9644
     to_port         = 9644
     protocol        = "tcp"
-    security_groups = [aws_security_group.microservices.id]
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
   }
 
   # Consul UI & API (from within VPC)
@@ -141,6 +186,13 @@ resource "aws_security_group" "controlplane" {
     from_port   = 8300
     to_port     = 8301
     protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "udp"
     cidr_blocks = [var.vpc_cidr]
   }
 

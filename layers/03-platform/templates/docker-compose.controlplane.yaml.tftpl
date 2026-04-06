@@ -2,15 +2,16 @@ version: '3.8'
 services:
   # Consul for Service Discovery and Config
   consul:
-    image: hashicorp/consul:1.15
+    image: hashicorp/consul:1.14
     container_name: quietchatter-consul
     restart: always
     volumes:
       - ./consul_data:/consul/data
       - ./consul_config:/consul/config
     environment:
-      CONSUL_BIND_INTERFACE: eth0
-      CONSUL_CLIENT_INTERFACE: eth0
+      # Nitro instances on AL2023 use ens5 as the default interface
+      CONSUL_BIND_INTERFACE: ens5
+      CONSUL_CLIENT_INTERFACE: ens5
     command: "agent -server -bootstrap-expect=1 -ui -client=0.0.0.0 -data-dir=/consul/data -config-dir=/consul/config"
     network_mode: host
 

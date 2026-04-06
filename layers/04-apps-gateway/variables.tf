@@ -31,7 +31,7 @@ variable "azs" {
 variable "ami_id" {
   description = "The AMI ID to use for EC2 instances (Amazon Linux 2023 ARM64)"
   type        = string
-  default     = "ami-0e31683998cedb019" # Actual AL2023 ARM64 AMI in ap-northeast-2
+  default     = "ami-0e31683998cedb019"
 }
 
 variable "controlplane_private_ip" {
@@ -66,11 +66,10 @@ variable "microservices" {
   }
 }
 
-# Sensitive Variables (Store these in terraform.tfvars or as environment variables)
 variable "kafka_brokers" {
   description = "Kafka broker addresses (e.g., controlplane_ip:9092)"
   type        = string
-  default     = "" # Will be dynamically populated or overridden
+  default     = ""
 }
 
 variable "api_gateway_private_ip" {
@@ -78,5 +77,3 @@ variable "api_gateway_private_ip" {
   type        = string
   default     = "10.0.101.200"
 }
-
-

@@ -2,10 +2,14 @@ version: '3.8'
 services:
   # Consul Client Agent
   consul-agent:
-    image: hashicorp/consul:1.15
+    image: hashicorp/consul:1.14
     container_name: quietchatter-consul-agent
     restart: always
+    environment:
+      # Nitro instances on AL2023 use ens5 as the default interface
+      CONSUL_BIND_INTERFACE: ens5
     command: "agent -join=${controlplane_ip} -data-dir=/consul/data -client=0.0.0.0"
+    network_mode: host
     deploy:
       resources:
         limits:
@@ -18,12 +22,15 @@ services:
     restart: always
     environment:
       - SPRING_PROFILES_ACTIVE=prod
-      - CONSUL_HOST=consul-agent
+      - CONSUL_HOST=localhost
+      # Redis Connection to Control Plane
+      - SPRING_DATA_REDIS_HOST=${controlplane_ip}
+      - SPRING_DATA_REDIS_PORT=6379
       - JAVA_OPTS=-Xms256m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss256k
     ports:
       - "8080:8080"
-    depends_on:
-      - consul-agent
+    # network_mode: host를 사용하면 localhost로 consul-agent에 접속 가능
+    network_mode: host
     deploy:
       resources:
         limits:

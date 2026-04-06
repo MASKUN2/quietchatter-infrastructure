@@ -1,32 +1,71 @@
 #!/bin/bash
 set -e
-# Fetch secrets from AWS Secrets Manager
-GRAFANA_API_KEY=$(aws secretsmanager get-secret-value --region ${aws_region} --secret-id ${grafana_api_key_secret_name} --query SecretString --output text)
 
-# Setup 2GB Swap Memory
-dd if=/dev/zero of=/swapfile bs=128M count=16
-chmod 600 /swapfile
-mkswap /swapfile
-swapon /swapfile
-echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+# 로그 출력을 위한 함수 정의
+log() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $1"
+}
 
-# Wait for NAT to be available
-until ping -c 1 8.8.8.8; do
-  echo "Waiting for NAT instance to be ready..."
+# 에러 발생 시 호출될 함수
+error_handler() {
+  log "ERROR: $1 단계에서 문제가 발생했습니다. 작업을 중단합니다."
+  exit 1
+}
+
+log "INFO: userdata 스크립트 실행을 시작합니다."
+
+# 0. 인터넷 연결 확인 (NAT 인스턴스 준비 대기)
+log "STEP 0: 인터넷 연결을 확인하고 있습니다..."
+until ping -c 1 8.8.8.8 > /dev/null 2>&1; do
+  log "인터넷 연결 대기 중 (5초 후 재시도)..."
   sleep 5
 done
+log "인터넷 연결 확인 완료."
 
-# Install Docker and Docker Compose
-dnf clean all
-dnf install docker -y || { sleep 5; dnf install docker -y; }
-systemctl enable docker
-systemctl start docker
-mkdir -p /usr/local/lib/docker/cli-plugins/
-curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 -o /usr/local/lib/docker/cli-plugins/docker-compose
-chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+# 1. AWS Secrets Manager에서 비밀 정보 가져오기
+log "STEP 1: AWS Secrets Manager에서 비밀 정보를 가져오고 있습니다..."
+{
+  GRAFANA_API_KEY=$(aws secretsmanager get-secret-value --region ${aws_region} --secret-id ${grafana_api_key_secret_name} --query SecretString --output text)
+} || error_handler "시크릿 정보 가져오기"
 
-# Install Grafana Alloy
-cat << 'REPO' > /etc/yum.repos.d/grafana.repo
+# 환경 변수를 .env 파일에 저장하여 지속성 유지
+{
+  cat <<EOF > /home/ec2-user/.env
+GRAFANA_API_KEY=$GRAFANA_API_KEY
+EOF
+  chown ec2-user:ec2-user /home/ec2-user/.env
+  chmod 600 /home/ec2-user/.env
+} || error_handler ".env 파일 생성"
+log ".env 파일 생성 및 권한 설정 완료."
+
+# 2. 시스템 설정 (Swap)
+log "STEP 2: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
+{
+  dd if=/dev/zero of=/swapfile bs=128M count=16
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  if ! grep -q "/swapfile" /etc/fstab; then
+    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+  fi
+} || error_handler "Swap 설정"
+
+# 4. Docker 설치
+log "STEP 4: Docker 및 Docker Compose를 설치하고 있습니다..."
+{
+  dnf clean all
+  dnf install docker -y || { log "Docker 설치 재시도 중..."; sleep 5; dnf install docker -y; }
+  systemctl enable docker
+  systemctl start docker
+  mkdir -p /usr/local/lib/docker/cli-plugins/
+  curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+  chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+} || error_handler "Docker 설치"
+
+# 5. Grafana Alloy 설치 및 설정
+log "STEP 5: Grafana Alloy를 설치하고 설정을 적용하고 있습니다..."
+{
+  cat << 'REPO' > /etc/yum.repos.d/grafana.repo
 [grafana]
 name=grafana
 baseurl=https://rpm.grafana.com
@@ -38,26 +77,31 @@ sslverify=1
 sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 REPO
 
-dnf install alloy -y
+  dnf install alloy -y
+  usermod -aG docker alloy
 
-# Allow Alloy to access Docker socket
-usermod -aG docker alloy
-
-cat <<'EOF' > /etc/alloy/config.alloy
+  cat <<'EOF' > /etc/alloy/config.alloy
 ${alloy_config}
 EOF
 
-# Inject API Key as Environment Variable for Alloy Systemd Service
-echo "GRAFANA_API_KEY=$GRAFANA_API_KEY" >> /etc/sysconfig/alloy
+  echo "GRAFANA_API_KEY=$GRAFANA_API_KEY" >> /etc/sysconfig/alloy
+  systemctl enable alloy
+  systemctl start alloy
+} || error_handler "Grafana Alloy 설정"
 
-systemctl enable alloy
-systemctl start alloy
-
-# Create docker-compose.yaml from template
-cat <<'EOF' > /home/ec2-user/docker-compose.yaml
+# 6. 애플리케이션 설정 파일 생성
+log "STEP 6: Docker Compose 설정 파일을 생성하고 있습니다..."
+{
+  cat <<'EOF' > /home/ec2-user/docker-compose.yaml
 ${docker_compose_config}
 EOF
+} || error_handler "설정 파일 생성"
 
-# Run containers
-cd /home/ec2-user
-docker compose up -d
+# 7. 서비스 실행
+log "STEP 7: Docker Compose를 사용하여 서비스를 실행합니다..."
+{
+  cd /home/ec2-user
+  docker compose up -d
+} || error_handler "서비스 실행"
+
+log "INFO: 모든 userdata 설정이 성공적으로 완료되었습니다."

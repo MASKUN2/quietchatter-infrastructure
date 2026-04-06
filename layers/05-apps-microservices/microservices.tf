@@ -14,29 +14,31 @@ resource "aws_launch_template" "microservice" {
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tftpl", {
     aws_region                  = var.aws_region
+    db_password_secret_name     = data.terraform_remote_state.base.outputs.db_password_secret_name
     grafana_api_key_secret_name = data.terraform_remote_state.base.outputs.grafana_api_key_secret_name
     alloy_config                = templatefile("${path.module}/templates/config.alloy.tftpl", {
-                                     instance_name = "quietchatter-${each.key}-node"
-                                     loki_url      = var.grafana_cloud_logs_url
-                                     loki_user     = data.terraform_remote_state.base.outputs.grafana_cloud_user
-                                  })
-    docker_compose_config       = templatefile("${path.module}/templates/docker-compose.microservice-${each.key}.yaml.tftpl", {
-                                     controlplane_ip = var.controlplane_private_ip
-                                     service_image   = each.value.image_var
-                                     db_host         = var.controlplane_private_ip
-                                     db_username     = var.db_username
-                                     db_password     = var.db_password
-                                     kafka_brokers   = "${var.controlplane_private_ip}:19092"
-                                   })
+      instance_name = "quietchatter-${each.key}-node"
+      loki_url      = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+      loki_user     = data.terraform_remote_state.base.outputs.grafana_cloud_user
+    })
+    docker_compose_config = templatefile("${path.module}/templates/docker-compose.microservice-${each.key}.yaml.tftpl", {
+      controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+      service_image   = each.value.image_var
+      db_host         = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+      db_username     = data.terraform_remote_state.base.outputs.db_username
+    })
   }))
 
-tag_specifications {
-  resource_type = "instance"
-  tags = {
-    Name    = "quietchatter-${each.key}-node"
-    Service = each.key
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name    = "quietchatter-${each.key}-node"
+      Service = each.key
+    }
   }
-}
+
+  # Ensure instances are replaced on user_data change
+  update_default_version = true
 }
 
 # Auto Scaling Group for Microservices
@@ -44,7 +46,7 @@ resource "aws_autoscaling_group" "microservice" {
   for_each = var.microservices
 
   name                = "quietchatter-${each.key}-asg"
-  vpc_zone_identifier = [data.terraform_remote_state.base.outputs.private_subnet_ids[0], data.terraform_remote_state.base.outputs.private_subnet_ids[1]]
+  vpc_zone_identifier = data.terraform_remote_state.base.outputs.private_subnet_ids
   desired_capacity    = 1
   min_size            = 1
   max_size            = 1
@@ -71,15 +73,17 @@ resource "aws_autoscaling_group" "microservice" {
     }
   }
 
+  instance_refresh {
+    strategy = "Rolling"
+    preferences {
+      min_healthy_percentage = 0
+    }
+    triggers = ["tag", "launch_template"]
+  }
+
   tag {
     key                 = "Name"
     value               = "quietchatter-${each.key}-asg-node"
     propagate_at_launch = true
   }
-
-  # Dependencies handled by user_data wait scripts across layers
-  # depends_on = [
-  #   aws_route.private_nat_route,
-  #   aws_instance.controlplane
-  # ]
 }
