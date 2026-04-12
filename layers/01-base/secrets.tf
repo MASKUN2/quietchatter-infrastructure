@@ -50,3 +50,16 @@ resource "aws_secretsmanager_secret_version" "naver_client_secret" {
   secret_id     = aws_secretsmanager_secret.naver_client_secret.id
   secret_string = var.naver_client_secret
 }
+
+# JWT Secret Key (member microservice)
+resource "aws_secretsmanager_secret" "jwt_secret_key" {
+  name        = "quietchatter-jwt-secret-key"
+  description = "JWT signing secret key for member microservice"
+
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "jwt_secret_key" {
+  secret_id     = aws_secretsmanager_secret.jwt_secret_key.id
+  secret_string = var.jwt_secret_key
+}

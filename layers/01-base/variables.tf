@@ -91,3 +91,10 @@ variable "naver_client_secret" {
   sensitive   = true
   default     = ""
 }
+
+variable "jwt_secret_key" {
+  description = "JWT signing secret key for member microservice"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
