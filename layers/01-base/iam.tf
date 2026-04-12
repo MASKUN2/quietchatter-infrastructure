@@ -39,8 +39,11 @@ resource "aws_iam_role_policy" "secrets_policy" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ]
-        Effect   = "Allow"
-        Resource = "*"
+        Effect = "Allow"
+        Resource = [
+          aws_secretsmanager_secret.db_password.arn,
+          aws_secretsmanager_secret.grafana_api_key.arn
+        ]
       }
     ]
   })
