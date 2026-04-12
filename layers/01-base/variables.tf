@@ -77,3 +77,17 @@ variable "grafana_cloud_logs_url" {
   type        = string
   default     = ""
 }
+
+variable "naver_client_id" {
+  description = "Naver OAuth Client ID for member and book microservices"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "naver_client_secret" {
+  description = "Naver OAuth Client Secret for member and book microservices"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

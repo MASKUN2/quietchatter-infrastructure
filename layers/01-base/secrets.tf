@@ -24,3 +24,29 @@ resource "aws_secretsmanager_secret_version" "grafana_api_key" {
   secret_id     = aws_secretsmanager_secret.grafana_api_key.id
   secret_string = var.grafana_cloud_api_key
 }
+
+# Naver OAuth Client ID Secret (member and book microservices)
+resource "aws_secretsmanager_secret" "naver_client_id" {
+  name        = "quietchatter-naver-client-id"
+  description = "Naver OAuth Client ID for member and book microservices"
+
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "naver_client_id" {
+  secret_id     = aws_secretsmanager_secret.naver_client_id.id
+  secret_string = var.naver_client_id
+}
+
+# Naver OAuth Client Secret (member and book microservices)
+resource "aws_secretsmanager_secret" "naver_client_secret" {
+  name        = "quietchatter-naver-client-secret"
+  description = "Naver OAuth Client Secret for member and book microservices"
+
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "naver_client_secret" {
+  secret_id     = aws_secretsmanager_secret.naver_client_secret.id
+  secret_string = var.naver_client_secret
+}

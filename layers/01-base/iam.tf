@@ -42,7 +42,9 @@ resource "aws_iam_role_policy" "secrets_policy" {
         Effect = "Allow"
         Resource = [
           aws_secretsmanager_secret.db_password.arn,
-          aws_secretsmanager_secret.grafana_api_key.arn
+          aws_secretsmanager_secret.grafana_api_key.arn,
+          aws_secretsmanager_secret.naver_client_id.arn,
+          aws_secretsmanager_secret.naver_client_secret.arn
         ]
       }
     ]
