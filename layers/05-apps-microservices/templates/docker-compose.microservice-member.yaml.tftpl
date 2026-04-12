@@ -13,7 +13,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 100M
+          memory: 60M
 
   # Member Microservice
   member-service:
@@ -28,7 +28,7 @@ services:
       - DB_PASSWORD=$${DB_PASSWORD}
       - REDIS_HOST=${controlplane_ip}
       - KAFKA_BROKERS=${controlplane_ip}:19092
-      - JAVA_OPTS=-Xms256m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss256k
+      - JAVA_OPTS=-Xms128m -Xmx256m -XX:MaxMetaspaceSize=128m -XX:+UseSerialGC -Xss512k
     ports:
       - "8083:8080"
     network_mode: host
