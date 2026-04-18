@@ -1,0 +1,49 @@
+version: '3.8'
+services:
+  consul-agent:
+    image: hashicorp/consul:1.14
+    container_name: quietchatter-consul-agent
+    restart: always
+    environment:
+      CONSUL_BIND_INTERFACE: ens5
+    command: "agent -join=${controlplane_ip} -data-dir=/consul/data -client=0.0.0.0"
+    network_mode: host
+    deploy:
+      resources:
+        limits:
+          memory: 100M
+
+  frontend:
+    image: ${service_image}
+    container_name: quietchatter-frontend
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - INTERNAL_API_GATEWAY_URL=http://${api_gateway_ip}:8080
+      - BFF_JWT_SECRET=$BFF_JWT_SECRET
+      - NAVER_CLIENT_ID=$NAVER_CLIENT_ID
+      - NAVER_CLIENT_SECRET=$NAVER_CLIENT_SECRET
+    ports:
+      - "3000:3000"
+    network_mode: host
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: quietchatter-watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_POLL_INTERVAL=120
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+    deploy:
+      resources:
+        limits:
+          memory: 100M
