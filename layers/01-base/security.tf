@@ -49,6 +49,13 @@ resource "aws_security_group" "api_gateway" {
     from_port       = 80
     to_port         = 8080
     protocol        = "tcp"
+    security_groups = [aws_security_group.nat_ingress.id]
+  }
+
+  ingress {
+    from_port       = 80
+    to_port         = 8080
+    protocol        = "tcp"
     security_groups = [aws_security_group.frontend.id]
   }
 

@@ -99,7 +99,7 @@ EOF
 log "STEP 6: 서비스를 실행합니다..."
 {
   cd /home/ec2-user
-  docker compose up -d
+  docker compose --env-file .env up -d
 } || error_handler "서비스 실행"
 
 log "INFO: 모든 userdata 설정이 성공적으로 완료되었습니다."

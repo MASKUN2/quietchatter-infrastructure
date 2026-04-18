@@ -45,7 +45,8 @@ resource "aws_iam_role_policy" "secrets_policy" {
           aws_secretsmanager_secret.grafana_api_key.arn,
           aws_secretsmanager_secret.naver_client_id.arn,
           aws_secretsmanager_secret.naver_client_secret.arn,
-          aws_secretsmanager_secret.jwt_secret_key.arn
+          aws_secretsmanager_secret.jwt_secret_key.arn,
+          aws_secretsmanager_secret.bff_jwt_secret_key.arn
         ]
       }
     ]
