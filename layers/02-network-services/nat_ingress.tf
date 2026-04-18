@@ -32,7 +32,7 @@ resource "aws_instance" "nat_ingress" {
                                loki_user     = data.terraform_remote_state.base.outputs.grafana_cloud_user
                              })
     nginx_config           = templatefile("${path.module}/templates/nginx.conf.tftpl", {
-                               api_gateway_ip  = data.terraform_remote_state.base.outputs.api_gateway_private_ip
+                               frontend_ip = data.terraform_remote_state.base.outputs.frontend_private_ip
                              })
     docker_compose_config  = file("${path.module}/templates/docker-compose.nat-ingress.yaml")
   })
