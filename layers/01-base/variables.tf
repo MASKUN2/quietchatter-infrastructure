@@ -98,3 +98,16 @@ variable "jwt_secret_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "frontend_private_ip" {
+  description = "Static private IP for the Next.js BFF Node"
+  type        = string
+  default     = "10.0.101.50"
+}
+
+variable "bff_jwt_secret_key" {
+  description = "JWT signing secret key for Next.js BFF session cookies"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -49,7 +49,7 @@ resource "aws_security_group" "api_gateway" {
     from_port       = 80
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.nat_ingress.id]
+    security_groups = [aws_security_group.frontend.id]
   }
 
   # Consul Serf LAN (Internal)
@@ -111,6 +111,45 @@ resource "aws_security_group" "microservices" {
 
   tags = {
     Name = "quietchatter-microservices-sg"
+  }
+}
+
+# Frontend (Next.js BFF) Security Group
+resource "aws_security_group" "frontend" {
+  name        = "quietchatter-frontend-sg"
+  description = "Security group for Next.js BFF"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 3000
+    to_port         = 3000
+    protocol        = "tcp"
+    security_groups = [aws_security_group.nat_ingress.id]
+  }
+
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "quietchatter-frontend-sg"
   }
 }
 

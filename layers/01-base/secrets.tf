@@ -63,3 +63,16 @@ resource "aws_secretsmanager_secret_version" "jwt_secret_key" {
   secret_id     = aws_secretsmanager_secret.jwt_secret_key.id
   secret_string = var.jwt_secret_key
 }
+
+# BFF JWT Secret Key (Next.js BFF session management)
+resource "aws_secretsmanager_secret" "bff_jwt_secret_key" {
+  name        = "quietchatter-bff-jwt-secret-key"
+  description = "JWT signing secret key for Next.js BFF session cookies"
+
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "bff_jwt_secret_key" {
+  secret_id     = aws_secretsmanager_secret.bff_jwt_secret_key.id
+  secret_string = var.bff_jwt_secret_key
+}

@@ -69,3 +69,23 @@ output "controlplane_sg_id" {
 output "ssm_profile_name" {
   value = aws_iam_instance_profile.ssm_profile.name
 }
+
+output "frontend_sg_id" {
+  value = aws_security_group.frontend.id
+}
+
+output "frontend_private_ip" {
+  value = var.frontend_private_ip
+}
+
+output "bff_jwt_secret_name" {
+  value = aws_secretsmanager_secret.bff_jwt_secret_key.name
+}
+
+output "naver_client_id_secret_name" {
+  value = aws_secretsmanager_secret.naver_client_id.name
+}
+
+output "naver_client_secret_secret_name" {
+  value = aws_secretsmanager_secret.naver_client_secret.name
+}
