@@ -219,6 +219,27 @@ resource "aws_security_group" "controlplane" {
     ]
   }
 
+  # Redpanda Schema Registry
+  ingress {
+    from_port       = 8081
+    to_port         = 8081
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
+  }
+
+  ingress {
+    from_port       = 18081
+    to_port         = 18081
+    protocol        = "tcp"
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.api_gateway.id
+    ]
+  }
+
   # Consul UI & API (from within VPC)
   ingress {
     from_port   = 8500

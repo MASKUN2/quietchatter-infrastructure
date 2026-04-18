@@ -61,10 +61,14 @@ services:
       - --check=false
       - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
       - --advertise-kafka-addr internal://localhost:9092,external://localhost:19092
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --advertise-schema-registry-addr internal://localhost:8081,external://localhost:18081
     ports:
       - "9092:9092"
       - "19092:19092"
       - "9644:9644"
+      - "8081:8081"
+      - "18081:18081"
     deploy:
       resources:
         limits:
