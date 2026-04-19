@@ -26,7 +26,7 @@ resource "aws_iam_role_policy_attachment" "ssm_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
-# Attach inline policy to allow reading from Secrets Manager
+# Attach inline policy to allow reading from Secrets Manager and S3 config
 resource "aws_iam_role_policy" "secrets_policy" {
   name = "quietchatter-secrets-policy"
   role = aws_iam_role.ssm_role.id
@@ -47,6 +47,22 @@ resource "aws_iam_role_policy" "secrets_policy" {
           aws_secretsmanager_secret.naver_client_secret.arn,
           aws_secretsmanager_secret.jwt_secret_key.arn,
           aws_secretsmanager_secret.bff_jwt_secret_key.arn
+        ]
+      },
+      {
+        Action   = ["secretsmanager:ListSecrets"]
+        Effect   = "Allow"
+        Resource = "*"
+      },
+      {
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ]
+        Effect = "Allow"
+        Resource = [
+          "arn:aws:s3:::quietchatter-controlplane-config",
+          "arn:aws:s3:::quietchatter-controlplane-config/*"
         ]
       }
     ]

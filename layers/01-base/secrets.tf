@@ -5,6 +5,10 @@ resource "aws_secretsmanager_secret" "db_password" {
   
   # Recovery window set to 0 for easy testing/destruction, change for production
   recovery_window_in_days = 0
+
+  tags = {
+    controlplane = "true"
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
@@ -18,6 +22,10 @@ resource "aws_secretsmanager_secret" "grafana_api_key" {
   description = "Grafana Cloud API Key for logs and metrics"
   
   recovery_window_in_days = 0
+
+  tags = {
+    controlplane = "true"
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "grafana_api_key" {
