@@ -36,7 +36,7 @@ resource "aws_instance" "controlplane" {
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
     aws_region     = var.aws_region
-    s3_bucket_name = aws_s3_bucket.controlplane_config.bucket
+    s3_bucket_name = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
     init_db_sql    = file("${path.module}/init-db.sql")
   })
 
