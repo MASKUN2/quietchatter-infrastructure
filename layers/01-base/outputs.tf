@@ -50,8 +50,12 @@ output "private_route_table_id" {
   value = aws_route_table.private.id
 }
 
-output "nat_ingress_sg_id" {
-  value = aws_security_group.nat_ingress.id
+output "nat_sg_id" {
+  value = aws_security_group.nat.id
+}
+
+output "ingress_sg_id" {
+  value = aws_security_group.ingress.id
 }
 
 output "api_gateway_sg_id" {

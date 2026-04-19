@@ -28,6 +28,12 @@ variable "azs" {
   default     = ["ap-northeast-2a", "ap-northeast-2c"]
 }
 
+variable "ami_id" {
+  description = "The AMI ID to use for EC2 instances (Amazon Linux 2023 ARM64)"
+  type        = string
+  default     = "ami-0e31683998cedb019"
+}
+
 variable "nat_private_ip" {
   description = "Static private IP for the NAT Ingress Node"
   type        = string

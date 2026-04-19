@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+log() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $1"
+}
+
+log "INFO: NAT userdata 실행을 시작합니다."
+
+# 1. IP Forwarding 설정
+log "STEP 1: IP Forwarding 설정을 진행합니다..."
+echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
+sysctl -p /etc/sysctl.d/99-nat.conf
+
+# 2. IPTables NAT 설정
+log "STEP 2: IPTables NAT 설정을 진행합니다..."
+dnf install iptables-services -y
+iptables -t nat -A POSTROUTING -s ${vpc_cidr} -j MASQUERADE
+service iptables save
+systemctl enable iptables
+systemctl start iptables
+
+log "INFO: 모든 NAT 설정이 완료되었습니다."

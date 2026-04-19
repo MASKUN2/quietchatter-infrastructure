@@ -1,23 +1,8 @@
-# NAT / Ingress Security Group
-resource "aws_security_group" "nat_ingress" {
-  name        = "quietchatter-nat-ingress-sg"
-  description = "Security group for NAT and NGINX Ingress"
+# NAT Security Group (Dedicated for NAT Instance)
+resource "aws_security_group" "nat" {
+  name        = "quietchatter-nat-sg"
+  description = "Security group for dedicated NAT instance"
   vpc_id      = aws_vpc.main.id
-
-  # HTTP/HTTPS for NGINX
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
 
   # Allow all internal traffic from VPC for NAT purpose
   ingress {
@@ -35,7 +20,55 @@ resource "aws_security_group" "nat_ingress" {
   }
 
   tags = {
-    Name = "quietchatter-nat-ingress-sg"
+    Name = "quietchatter-nat-sg"
+  }
+}
+
+# Ingress Security Group (Dedicated for NGINX Ingress)
+resource "aws_security_group" "ingress" {
+  name        = "quietchatter-ingress-sg"
+  description = "Security group for NGINX Ingress"
+  vpc_id      = aws_vpc.main.id
+
+  # HTTP/HTTPS for NGINX
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Consul Serf LAN (Internal)
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 8301
+    to_port     = 8301
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "quietchatter-ingress-sg"
   }
 }
 
@@ -49,7 +82,9 @@ resource "aws_security_group" "api_gateway" {
     from_port       = 80
     to_port         = 8080
     protocol        = "tcp"
-    security_groups = [aws_security_group.nat_ingress.id]
+    security_groups = [aws_security_group.ingress.id]
+    # cidr_blocks = [var.vpc_cidr]
+
   }
 
   ingress {
@@ -131,7 +166,9 @@ resource "aws_security_group" "frontend" {
     from_port       = 3000
     to_port         = 3000
     protocol        = "tcp"
-    security_groups = [aws_security_group.nat_ingress.id]
+    security_groups = [aws_security_group.ingress.id]
+    # cidr_blocks = [var.vpc_cidr]
+
   }
 
   ingress {
@@ -248,7 +285,7 @@ resource "aws_security_group" "controlplane" {
     cidr_blocks = [var.vpc_cidr]
   }
 
-  # Consul RPC & Serf
+  # Consul Serf LAN & RPC
   ingress {
     from_port   = 8300
     to_port     = 8301
@@ -259,6 +296,21 @@ resource "aws_security_group" "controlplane" {
   ingress {
     from_port   = 8301
     to_port     = 8301
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  # Consul DNS (Internal)
+  ingress {
+    from_port   = 8600
+    to_port     = 8600
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  ingress {
+    from_port   = 8600
+    to_port     = 8600
     protocol    = "udp"
     cidr_blocks = [var.vpc_cidr]
   }
