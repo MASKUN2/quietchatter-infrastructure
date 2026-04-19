@@ -6,7 +6,9 @@ services:
     restart: always
     environment:
       CONSUL_BIND_INTERFACE: ens5
-    command: "agent -join=${controlplane_ip} -data-dir=/consul/data -client=0.0.0.0"
+    command: "agent -join=${controlplane_ip} -data-dir=/consul/data -config-dir=/consul/config -client=0.0.0.0"
+    volumes:
+      - /home/ec2-user/consul_config:/consul/config
     network_mode: host
     deploy:
       resources:
@@ -20,7 +22,7 @@ services:
     environment:
       - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
-      - INTERNAL_API_GATEWAY_URL=http://${api_gateway_ip}:8080
+      - INTERNAL_API_GATEWAY_URL=http://microservice-api-gateway.service.consul:8080
       - BFF_JWT_SECRET=$BFF_JWT_SECRET
       - NAVER_CLIENT_ID=$NAVER_CLIENT_ID
       - NAVER_CLIENT_SECRET=$NAVER_CLIENT_SECRET

@@ -43,7 +43,7 @@ variable "controlplane_private_ip" {
 variable "api_gateway_image" {
   description = "Docker image for the API Gateway (Spring Cloud Gateway)"
   type        = string
-  default     = "maskun2/quietchatter-microservice-gateway:latest"
+  default     = "maskun2/quietchatter-microservice-api-gateway:latest"
 }
 
 variable "grafana_cloud_metrics_url" {

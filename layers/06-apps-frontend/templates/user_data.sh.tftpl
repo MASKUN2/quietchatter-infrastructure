@@ -63,6 +63,17 @@ log "STEP 3: Docker 및 Docker Compose를 설치하고 있습니다..."
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 } || error_handler "Docker 설치"
 
+log "STEP X: Consul DNS를 시스템 DNS에 등록합니다..."
+{
+  mkdir -p /etc/systemd/resolved.conf.d
+  cat <<'EOF' > /etc/systemd/resolved.conf.d/consul.conf
+[Resolve]
+DNS=127.0.0.1:8600
+Domains=~consul
+EOF
+  systemctl restart systemd-resolved
+} || error_handler "Consul DNS 설정"
+
 log "STEP 4: Grafana Alloy를 설치하고 설정을 적용하고 있습니다..."
 {
   cat << 'REPO' > /etc/yum.repos.d/grafana.repo
@@ -89,14 +100,32 @@ EOF
   systemctl start alloy
 } || error_handler "Grafana Alloy 설정"
 
-log "STEP 5: Docker Compose 설정 파일을 생성하고 있습니다..."
+log "STEP 5: Consul 서비스 정의 파일을 생성하고 있습니다..."
+{
+  mkdir -p /home/ec2-user/consul_config
+  cat <<'EOF' > /home/ec2-user/consul_config/frontend.json
+{
+  "service": {
+    "name": "microservice-frontend",
+    "port": 3000,
+    "check": {
+      "tcp": "localhost:3000",
+      "interval": "10s",
+      "timeout": "3s"
+    }
+  }
+}
+EOF
+} || error_handler "Consul 서비스 정의 파일 생성"
+
+log "STEP 6: Docker Compose 설정 파일을 생성하고 있습니다..."
 {
   cat <<'EOF' > /home/ec2-user/docker-compose.yaml
 ${docker_compose_config}
 EOF
 } || error_handler "설정 파일 생성"
 
-log "STEP 6: 서비스를 실행합니다..."
+log "STEP 7: 서비스를 실행합니다..."
 {
   cd /home/ec2-user
   docker compose --env-file .env up -d

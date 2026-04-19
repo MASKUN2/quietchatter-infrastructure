@@ -22,6 +22,7 @@ services:
     restart: always
     environment:
       - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_APPLICATION_NAME=microservice-api-gateway
       - CONSUL_HOST=localhost
       # Redis Connection to Control Plane
       - SPRING_DATA_REDIS_HOST=${controlplane_ip}

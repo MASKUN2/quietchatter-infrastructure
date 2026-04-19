@@ -8,7 +8,6 @@ locals {
   docker_compose_config = templatefile("${path.module}/templates/docker-compose.frontend.yaml.tftpl", {
     controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
     service_image   = var.frontend_image
-    api_gateway_ip  = data.terraform_remote_state.base.outputs.api_gateway_private_ip
   })
 }
 
