@@ -52,3 +52,31 @@
 ### C. Nginx 설정
 
 - 보간(Interpolation) 주의: Nginx 설정의 $host 등은 테라폼 보간 ${}과 구분되므로 안전하나, 쉘 스크립트 내에서 혼용 시 반드시 따옴표('EOF')로 감싸서 보호
+
+### D. S3 기반 설정 동기화 (sync.sh)
+
+- sync.sh 경로: 현재 `/usr/local/bin/sync.sh`. SSM 접속 시 ec2-user 홈에서 보이지 않아 장애 대응이 불편하므로, 향후 `/home/ec2-user/sync.sh`로 이동 예정.
+- /etc/sysconfig/alloy 구성: Alloy systemd 서비스는 `CONFIG_FILE` 환경변수가 없으면 "accepts 1 arg(s), received 0" 오류로 실패함. sync.sh가 `/etc/sysconfig/alloy`를 덮어쓸 때 반드시 `CONFIG_FILE=/etc/alloy/config.alloy`를 포함해야 함.
+- 파일 소유권: sync.sh가 root로 실행되면 `/home/ec2-user/` 하위 파일이 root 소유로 생성됨. 이후 ec2-user로 실행 시 덮어쓰기 실패(Permission denied). 파일 생성 후 반드시 `chown ec2-user:ec2-user`를 실행할 것.
+- 임시 파일: `mktemp`는 기본값(`/tmp/`)을 사용. `~` 경로를 지정하면 실행 주체(root)의 홈인 `/root/`가 되어 의도와 다름. 최종 파일만 `/home/ec2-user/`에 배치할 것.
+
+### E. Grafana Alloy 로그 수집
+
+- Docker 컨테이너 로그에서 `service_name` 레이블을 매핑할 때 `loki.relabel`에서 `__meta_docker_container_name`을 참조하면 항상 빈 값이 됨. `loki.source.docker`는 로그 엔트리 포워드 시 `__meta_*` 레이블을 전달하지 않기 때문.
+- 올바른 방법: `discovery.relabel`에서 타겟 단계에 `service_name` 레이블을 설정하고, `loki.source.docker`의 `targets`에 `discovery.relabel.*.output`을 사용. `__` 없는 레이블은 로그 엔트리에 그대로 첨부됨.
+
+```hcl
+discovery.relabel "docker" {
+  targets = discovery.docker.linux.targets
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    replacement   = "$1"
+    target_label  = "service_name"
+  }
+}
+loki.source.docker "logs" {
+  targets    = discovery.relabel.docker.output
+  ...
+}
+```
