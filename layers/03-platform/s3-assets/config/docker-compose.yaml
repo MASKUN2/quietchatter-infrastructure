@@ -1,0 +1,70 @@
+version: '3.8'
+services:
+  consul:
+    image: hashicorp/consul:1.14
+    container_name: quietchatter-consul
+    restart: always
+    volumes:
+      - ./consul_data:/consul/data
+      - ./consul_config:/consul/config
+    environment:
+      CONSUL_BIND_INTERFACE: ens5
+      CONSUL_CLIENT_INTERFACE: ens5
+    command: "agent -server -bootstrap-expect=1 -ui -client=0.0.0.0 -data-dir=/consul/data -config-dir=/consul/config"
+    network_mode: host
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: quietchatter-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: quietchatter
+      POSTGRES_USER: postgre_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  redis:
+    image: redis:7-alpine
+    container_name: quietchatter-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v23.2.1
+    container_name: quietchatter-redpanda
+    restart: always
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 768M
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --check=false
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://localhost:9092,external://localhost:19092
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --advertise-schema-registry-addr internal://localhost:8081,external://localhost:18081
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+      - "9644:9644"
+      - "8081:8081"
+      - "18081:18081"
+    deploy:
+      resources:
+        limits:
+          memory: 1G
