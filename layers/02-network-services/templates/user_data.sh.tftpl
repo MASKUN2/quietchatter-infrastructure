@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
 
-# 로그 출력을 위한 함수 정의
 log() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $1"
 }
 
-# 에러 발생 시 호출될 함수
 error_handler() {
   log "ERROR: $1 단계에서 문제가 발생했습니다. 작업을 중단합니다."
   exit 1
@@ -14,7 +12,7 @@ error_handler() {
 
 log "INFO: userdata 스크립트 실행을 시작합니다."
 
-# 0. 인터넷 연결 확인
+# 0. 인터넷 연결 확인 (NAT 인스턴스는 자기 자신이 게이트웨이이므로 직접 확인)
 log "STEP 0: 인터넷 연결을 확인하고 있습니다..."
 until ping -c 1 8.8.8.8 > /dev/null 2>&1; do
   log "인터넷 연결 대기 중 (5초 후 재시도)..."
@@ -22,54 +20,47 @@ until ping -c 1 8.8.8.8 > /dev/null 2>&1; do
 done
 log "인터넷 연결 확인 완료."
 
-# 1. AWS Secrets Manager에서 비밀 정보 가져오기
-log "STEP 1: AWS Secrets Manager에서 Grafana API Key를 가져오고 있습니다..."
-GRAFANA_API_KEY=$(aws secretsmanager get-secret-value --region ${aws_region} --secret-id ${grafana_api_key_secret_name} --query SecretString --output text) || error_handler "시크릿 정보 가져오기"
-
-# 환경 변수를 .env 파일에 저장하여 지속성 유지
-echo "GRAFANA_API_KEY=$GRAFANA_API_KEY" > /home/ec2-user/.env
-chown ec2-user:ec2-user /home/ec2-user/.env
-chmod 600 /home/ec2-user/.env
-log ".env 파일 생성 및 권한 설정 완료."
-
-# 2. 시스템 설정 (Swap)
-log "STEP 2: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
+# 1. 시스템 설정 (Swap)
+log "STEP 1: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
 {
   dd if=/dev/zero of=/swapfile bs=128M count=16
   chmod 600 /swapfile
   mkswap /swapfile
   swapon /swapfile
-  echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+  if ! grep -q "/swapfile" /etc/fstab; then
+    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+  fi
 } || error_handler "Swap 설정"
 
-# 3. NAT 포워딩 설정
-log "STEP 3: NAT 포워딩 및 iptables 설정을 진행합니다..."
+# 2. NAT 및 IP Forwarding 설정
+log "STEP 2: IP Forwarding 및 IPTables NAT 설정을 진행합니다..."
 {
-  sysctl -w net.ipv4.ip_forward=1
-  echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf
-  yum install iptables-services -y
+  echo "net.ipv4.ip_forward = 1" > /etc/sysctl.d/99-nat.conf
+  sysctl -p /etc/sysctl.d/99-nat.conf
+
+  # VPC CIDR 대역에 대해 NAT(Masquerading) 적용
+  dnf install iptables-services -y
+  iptables -t nat -A POSTROUTING -s ${vpc_cidr} -j MASQUERADE
+  service iptables save
   systemctl enable iptables
   systemctl start iptables
-  iptables -F
-  iptables -t nat -F
-  iptables -t nat -A POSTROUTING -s ${vpc_cidr} -j MASQUERADE
-  iptables-save > /etc/sysconfig/iptables
-} || error_handler "NAT 포워딩 설정"
+} || error_handler "NAT 설정"
 
-# 4. Docker 설치
-log "STEP 4: Docker 및 Docker Compose를 설치하고 있습니다..."
+# 3. Docker 설치
+log "STEP 3: Docker 및 Docker Compose를 설치하고 있습니다..."
 {
   dnf clean all
-  dnf install docker -y || { log "Docker 설치 재시도 중..."; sleep 5; dnf install docker -y; }
+  dnf install docker -y
   systemctl enable docker
   systemctl start docker
   mkdir -p /usr/local/lib/docker/cli-plugins/
-  curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+  curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 } || error_handler "Docker 설치"
 
-# 5. Grafana Alloy 설치 및 설정
-log "STEP 5: Grafana Alloy를 설치하고 설정을 적용하고 있습니다..."
+# 4. Grafana Alloy 설치
+log "STEP 4: Grafana Alloy를 설치합니다..."
 {
   cat << 'REPO' > /etc/yum.repos.d/grafana.repo
 [grafana]
@@ -85,33 +76,58 @@ REPO
 
   dnf install alloy -y
   usermod -aG docker alloy
-
-  cat <<'EOF' > /etc/alloy/config.alloy
-${alloy_config}
-EOF
-
-  echo "GRAFANA_API_KEY=$GRAFANA_API_KEY" >> /etc/sysconfig/alloy
   systemctl enable alloy
-  systemctl start alloy
-} || error_handler "Grafana Alloy 설정"
+} || error_handler "Grafana Alloy 설치"
 
-# 6. NGINX 및 애플리케이션 설정
-log "STEP 6: NGINX 및 Docker Compose 설정 파일을 생성하고 있습니다..."
+# 5. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
+log "STEP 5: 인프라 설정 파일을 작성합니다..."
 {
-  cat <<'EOF' > /home/ec2-user/nginx.conf
-${nginx_config}
+  mkdir -p /data/app
+  cat <<EOF > /etc/infra-asset-config
+AWS_REGION=${aws_region}
+S3_BUCKET=${s3_bucket_name}
+S3_PATH_PREFIX=network-services
+EOF
+} || error_handler "인프라 설정 파일 작성"
+
+# 6. S3에서 sync.sh 다운로드 및 초기 실행
+log "STEP 6: S3에서 sync.sh를 다운로드하고 초기 설정을 실행합니다..."
+{
+  aws s3 cp "s3://${s3_bucket_name}/network-services/scripts/sync.sh" \
+    /usr/local/bin/sync.sh --region ${aws_region}
+  chmod +x /usr/local/bin/sync.sh
+  /usr/local/bin/sync.sh
+} || error_handler "sync.sh 초기 실행"
+
+# 7. systemd timer 등록
+log "STEP 7: systemd timer를 등록합니다..."
+{
+  cat <<'EOF' > /etc/systemd/system/infra-asset-sync.service
+[Unit]
+Description=Infra Asset Sync
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sync.sh
+StandardOutput=journal
+StandardError=journal
 EOF
 
-  cat <<'EOF' > /home/ec2-user/docker-compose.yaml
-${docker_compose_config}
-EOF
-} || error_handler "설정 파일 생성"
+  cat <<'EOF' > /etc/systemd/system/infra-asset-sync.timer
+[Unit]
+Description=Infra Asset Sync Timer
 
-# 7. 서비스 실행
-log "STEP 7: Docker Compose를 사용하여 서비스를 실행합니다..."
-{
-  cd /home/ec2-user
-  docker compose up -d
-} || error_handler "서비스 실행"
+[Timer]
+OnBootSec=0
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable --now infra-asset-sync.timer
+} || error_handler "systemd timer 등록"
 
 log "INFO: 모든 userdata 설정이 성공적으로 완료되었습니다."

@@ -4,9 +4,9 @@
 
 **Goal:** Terraform user_data에서 docker-compose.yaml과 config.alloy를 분리하여 S3 기반 동적 설정 관리 구조로 전환한다. 특히 설정 파일 관리를 위해 01-base 레이어에 공통 인프라 에셋 버킷을 생성한다.
 
-**Architecture:** 01-base 레이어에 생성된 `quietchatter-infra-assets` S3 버킷에 설정 파일과 sync.sh 스크립트를 두고, EC2 인스턴스가 부팅 시 및 5분 주기로 S3에서 파일을 pull하여 변경 사항을 서비스 재시작 없이 반영한다. 시크릿은 Secrets Manager 태그 기반으로 자동 탐색한다.
+**Architecture:** 01-base 레이어에 생성된 `quietchatter-infra-assets` S3 버킷에 설정 파일과 sync.sh 스크립트를 두고, EC2 인스턴스(Controlplane, NAT)가 부팅 시 및 5분 주기로 S3에서 파일을 pull하여 변경 사항을 서비스 재시작 없이 반영한다. 시크릿은 Secrets Manager 태그 기반으로 자동 탐색한다.
 
-**Tech Stack:** Terraform, AWS S3, AWS Secrets Manager, systemd, Bash, Grafana Alloy, Docker Compose
+**Tech Stack:** Terraform, AWS S3, AWS Secrets Manager, systemd, Bash, Grafana Alloy, Docker Compose, Nginx
 
 ---
 
@@ -14,6 +14,10 @@
 
 Create:
 - `layers/01-base/s3.tf` — 공통 인프라 에셋 버킷 정의
+- `layers/02-network-services/s3-assets/scripts/sync.sh`
+- `layers/02-network-services/s3-assets/config/docker-compose.yaml`
+- `layers/02-network-services/s3-assets/config/config.alloy`
+- `layers/02-network-services/s3-assets/config/nginx.conf`
 - `layers/03-platform/s3-assets/scripts/sync.sh`
 - `layers/03-platform/s3-assets/config/docker-compose.yaml`
 - `layers/03-platform/s3-assets/config/config.alloy`
@@ -21,6 +25,8 @@ Create:
 Modify:
 - `layers/01-base/secrets.tf` — controlplane 태그 추가
 - `layers/01-base/iam.tf` — ListSecrets 및 S3 권한(리소스 참조 방식) 추가
+- `layers/02-network-services/nat_ingress.tf` — 리팩토링된 user_data 적용
+- `layers/02-network-services/templates/user_data.sh.tftpl` — 재작성
 - `layers/03-platform/controlplane.tf` — locals 제거, S3 버킷 remote_state 참조로 변경
 - `layers/03-platform/variables.tf` — api_gateway_image 제거
 - `layers/03-platform/templates/user_data.sh.tftpl` — 재작성

@@ -14,6 +14,7 @@ NGINX_CHANGED=false
 SECRETS_CHANGED=false
 
 # 1. 시크릿 동기화 (tag: controlplane=true)
+# NAT와 Controlplane 모두 공통 시크릿(GRAFANA_API_KEY 등)을 사용하므로 태그 필터 유지
 log "INFO: Secrets Manager에서 시크릿을 동기화합니다..."
 
 SECRET_ARNS=$(aws secretsmanager list-secrets \

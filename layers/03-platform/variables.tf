@@ -40,12 +40,6 @@ variable "controlplane_private_ip" {
   default     = "10.0.101.100"
 }
 
-variable "api_gateway_image" {
-  description = "Docker image for the API Gateway (Spring Cloud Gateway)"
-  type        = string
-  default     = "maskun2/quietchatter-microservice-api-gateway:latest"
-}
-
 variable "grafana_cloud_metrics_url" {
   description = "Grafana Cloud Prometheus (Metrics) URL"
   type        = string

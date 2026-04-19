@@ -98,9 +98,10 @@ EOF
 # 6. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
 log "STEP 6: 인프라 설정 파일을 작성합니다..."
 {
-  cat <<EOF > /etc/controlplane-config
+  cat <<EOF > /etc/infra-asset-config
 AWS_REGION=${aws_region}
 S3_BUCKET=${s3_bucket_name}
+S3_PATH_PREFIX=controlplane
 EOF
 } || error_handler "인프라 설정 파일 작성"
 

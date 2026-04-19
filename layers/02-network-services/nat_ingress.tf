@@ -23,18 +23,9 @@ resource "aws_instance" "nat_ingress" {
   }
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
-    aws_region             = var.aws_region
-    grafana_api_key_secret_name = data.terraform_remote_state.base.outputs.grafana_api_key_secret_name
-    vpc_cidr               = data.terraform_remote_state.base.outputs.vpc_cidr
-    alloy_config           = templatefile("${path.module}/templates/config.alloy.tftpl", {
-                               instance_name = "quietchatter-nat-ingress-node"
-                               loki_url      = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
-                               loki_user     = data.terraform_remote_state.base.outputs.grafana_cloud_user
-                             })
-    nginx_config           = templatefile("${path.module}/templates/nginx.conf.tftpl", {
-                               frontend_ip = data.terraform_remote_state.base.outputs.frontend_private_ip
-                             })
-    docker_compose_config  = file("${path.module}/templates/docker-compose.nat-ingress.yaml")
+    aws_region     = var.aws_region
+    s3_bucket_name = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    vpc_cidr       = data.terraform_remote_state.base.outputs.vpc_cidr
   })
 
   tags = {
