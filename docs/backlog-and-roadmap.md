@@ -1,6 +1,6 @@
 # Infrastructure Backlog & Roadmap
 
-이 문서는 현재 인프라 구성에서 보안 및 안정성을 위해 향후 도입이 필요한 기술적 과제들을 정리합니다. (최종 업데이트: 2026-04-05)
+이 문서는 현재 인프라 구성에서 보안 및 안정성을 위해 향후 도입이 필요한 기술적 과제들을 정리합니다. (최종 업데이트: 2026-04-19)
 
 ## 1. 고가용성 (High Availability) 및 확장성
 현재 단일 인스턴스(SPOF) 구조를 개선하여 서비스 중단을 방지해야 합니다.
@@ -19,9 +19,15 @@
 
 ## 4. 보안 강화 (Security)
 - **[완료] AWS Secrets Manager 연동**: 인스턴스 `user_data`에 평문으로 시크릿을 주입하던 취약점을 개선하여, `01-base` 레이어에서 Secrets Manager에 키를 등록하고 인스턴스 부팅 시 AWS CLI로 런타임 조회하도록 자동화 워크플로우 구축 완료.
+- **[완료] IAM 최소 권한 적용**: `secretsmanager:ListSecrets`, `secretsmanager:DescribeSecret` 제거. `GetSecretValue`만 특정 secret ARN에 한해 허용.
+- **[완료] 보안 그룹 수정**: api_gateway_sg 포트 오류 수정, microservices_sg 과도한 VPC 전체 허용 규칙 제거.
 - **SSL/TLS 적용**: 현재 80(HTTP) 포트만 사용 중이나, ALB 도입 시 ACM(AWS Certificate Manager)을 통해 HTTPS를 강제하고 보안 그룹을 더 타이트하게 관리합니다.
 - **세분화된 IAM 정책**: 현재 사용 중인 `ssm_profile` 외에 각 노드별로 필요한 최소 권한(S3 접근, CloudWatch 기록 등)만 부여하는 전용 IAM Role을 생성합니다.
 
 ## 5. 관찰성 (Observability) 고도화
+- **[완료] Docker 컨테이너 로그 수집**: Grafana Alloy의 `discovery.relabel` + `loki.source.docker` 구조로 service_name 레이블 정상 매핑 완료. job="quietchatter/docker", job="quietchatter/system" 구조로 분리.
 - **Grafana Alloy 메트릭 추가**: 현재 로그(Loki) 중심의 수집을 넘어, Node Exporter 및 Prometheus 메트릭 전송 설정을 추가하여 시스템 자원 모니터링 대시보드를 구축합니다.
 - **Alerting 설정**: 임계치 기반의 알람(CPU 90% 이상 등)을 Grafana Cloud에서 설정하여 장애 발생 시 즉각적인 대응이 가능하도록 합니다.
+
+## 6. 운영 편의성 (Operations)
+- **sync.sh 위치 변경**: 현재 `/usr/local/bin/sync.sh`를 `/home/ec2-user/sync.sh`로 이동. SSM 접속 시 기본 경로에서 바로 확인 가능하여 장애 대응이 편리해집니다. systemd 서비스 파일(ExecStart)도 함께 수정 필요.
