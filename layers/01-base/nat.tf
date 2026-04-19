@@ -40,6 +40,21 @@ resource "aws_route" "private_nat_route" {
   network_interface_id   = aws_network_interface.nat_eni.id
 }
 
+resource "aws_eip" "nat" {
+  domain            = "vpc"
+  network_interface = aws_network_interface.nat_eni.id
+
+  tags = {
+    Name = "quietchatter-nat-eip"
+  }
+
+  depends_on = [aws_internet_gateway.igw]
+}
+
 output "nat_instance_id" {
   value = aws_instance.nat.id
+}
+
+output "nat_public_ip" {
+  value = aws_eip.nat.public_ip
 }

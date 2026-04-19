@@ -1,12 +1,10 @@
 #!/bin/bash
 set -e
 
-# 로그 출력을 위한 함수 정의
 log() {
   echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $1"
 }
 
-# 에러 발생 시 호출될 함수
 error_handler() {
   log "ERROR: $1 단계에서 문제가 발생했습니다. 작업을 중단합니다."
   exit 1
@@ -22,24 +20,8 @@ until ping -c 1 8.8.8.8 > /dev/null 2>&1; do
 done
 log "인터넷 연결 확인 완료."
 
-# 1. AWS Secrets Manager에서 비밀 정보 가져오기
-log "STEP 1: AWS Secrets Manager에서 비밀 정보를 가져오고 있습니다..."
-{
-  GRAFANA_API_KEY=$(aws secretsmanager get-secret-value --region ${aws_region} --secret-id ${grafana_api_key_secret_name} --query SecretString --output text)
-} || error_handler "시크릿 정보 가져오기"
-
-# 환경 변수를 .env 파일에 저장하여 지속성 유지
-{
-  cat <<EOF > /home/ec2-user/.env
-GRAFANA_API_KEY=$GRAFANA_API_KEY
-EOF
-  chown ec2-user:ec2-user /home/ec2-user/.env
-  chmod 600 /home/ec2-user/.env
-} || error_handler ".env 파일 생성"
-log ".env 파일 생성 및 권한 설정 완료."
-
-# 2. 시스템 설정 (Swap)
-log "STEP 2: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
+# 1. 시스템 설정 (Swap)
+log "STEP 1: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
 {
   dd if=/dev/zero of=/swapfile bs=128M count=16
   chmod 600 /swapfile
@@ -50,20 +32,21 @@ log "STEP 2: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
   fi
 } || error_handler "Swap 설정"
 
-# 4. Docker 설치
-log "STEP 4: Docker 및 Docker Compose를 설치하고 있습니다..."
+# 2. Docker 설치
+log "STEP 2: Docker 및 Docker Compose를 설치하고 있습니다..."
 {
   dnf clean all
   dnf install docker -y || { log "Docker 설치 재시도 중..."; sleep 5; dnf install docker -y; }
   systemctl enable docker
   systemctl start docker
   mkdir -p /usr/local/lib/docker/cli-plugins/
-  curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 -o /usr/local/lib/docker/cli-plugins/docker-compose
+  curl -SL https://github.com/docker/compose/releases/download/v2.26.1/docker-compose-linux-aarch64 \
+    -o /usr/local/lib/docker/cli-plugins/docker-compose
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 } || error_handler "Docker 설치"
 
-# 5. Grafana Alloy 설치 및 설정
-log "STEP 5: Grafana Alloy를 설치하고 설정을 적용하고 있습니다..."
+# 3. Grafana Alloy 설치
+log "STEP 3: Grafana Alloy를 설치합니다..."
 {
   cat << 'REPO' > /etc/yum.repos.d/grafana.repo
 [grafana]
@@ -78,30 +61,70 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 REPO
 
   dnf install alloy -y
+  groupadd -f docker
   usermod -aG docker alloy
-
-  cat <<'EOF' > /etc/alloy/config.alloy
-${alloy_config}
+  mkdir -p /etc/systemd/system/alloy.service.d
+  cat <<'EOF' > /etc/systemd/system/alloy.service.d/override.conf
+[Service]
+EnvironmentFile=-/etc/sysconfig/alloy
 EOF
-
-  echo "GRAFANA_API_KEY=$GRAFANA_API_KEY" >> /etc/sysconfig/alloy
+  systemctl daemon-reload
   systemctl enable alloy
-  systemctl start alloy
-} || error_handler "Grafana Alloy 설정"
+} || error_handler "Grafana Alloy 설치"
 
-# 6. 애플리케이션 설정 파일 생성
-log "STEP 6: Docker Compose 설정 파일을 생성하고 있습니다..."
+# 4. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
+log "STEP 4: 인프라 설정 파일을 작성합니다..."
 {
-  cat <<'EOF' > /home/ec2-user/docker-compose.yaml
-${docker_compose_config}
+  cat <<EOF > /etc/infra-asset-config
+AWS_REGION=${aws_region}
+S3_BUCKET=${s3_bucket_name}
+S3_PATH_PREFIX=gateway
+CONTROLPLANE_IP=${controlplane_ip}
+SERVICE_IMAGE=${service_image}
+LOKI_URL=${loki_url}
+LOKI_USER=${loki_user}
+INSTANCE_NAME=${instance_name}
 EOF
-} || error_handler "설정 파일 생성"
+} || error_handler "인프라 설정 파일 작성"
 
-# 7. 서비스 실행
-log "STEP 7: Docker Compose를 사용하여 서비스를 실행합니다..."
+# 5. S3에서 sync.sh 다운로드 및 초기 실행
+log "STEP 5: S3에서 sync.sh를 다운로드하고 초기 설정을 실행합니다..."
 {
-  cd /home/ec2-user
-  docker compose up -d
-} || error_handler "서비스 실행"
+  aws s3 cp "s3://${s3_bucket_name}/gateway/scripts/sync.sh" \
+    /usr/local/bin/sync.sh --region ${aws_region}
+  chmod +x /usr/local/bin/sync.sh
+  /usr/local/bin/sync.sh
+} || error_handler "sync.sh 초기 실행"
+
+# 6. systemd timer 등록
+log "STEP 6: systemd timer를 등록합니다..."
+{
+  cat <<'EOF' > /etc/systemd/system/infra-asset-sync.service
+[Unit]
+Description=Infra Asset Sync
+After=network.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/sync.sh
+StandardOutput=journal
+StandardError=journal
+EOF
+
+  cat <<'EOF' > /etc/systemd/system/infra-asset-sync.timer
+[Unit]
+Description=Infra Asset Sync Timer
+
+[Timer]
+OnBootSec=0
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+EOF
+
+  systemctl daemon-reload
+  systemctl enable --now infra-asset-sync.timer
+} || error_handler "systemd timer 등록"
 
 log "INFO: 모든 userdata 설정이 성공적으로 완료되었습니다."

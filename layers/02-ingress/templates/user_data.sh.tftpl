@@ -36,7 +36,7 @@ log "STEP 1: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
 log "STEP 2: Docker 및 Docker Compose를 설치하고 있습니다..."
 {
   dnf clean all
-  dnf install docker -y
+  dnf install docker -y || { log "Docker 설치 재시도 중..."; sleep 5; dnf install docker -y; }
   systemctl enable docker
   systemctl start docker
   mkdir -p /usr/local/lib/docker/cli-plugins/
@@ -61,14 +61,20 @@ sslcacert=/etc/pki/tls/certs/ca-bundle.crt
 REPO
 
   dnf install alloy -y
+  groupadd -f docker
   usermod -aG docker alloy
+  mkdir -p /etc/systemd/system/alloy.service.d
+  cat <<'EOF' > /etc/systemd/system/alloy.service.d/override.conf
+[Service]
+EnvironmentFile=-/etc/sysconfig/alloy
+EOF
+  systemctl daemon-reload
   systemctl enable alloy
 } || error_handler "Grafana Alloy 설치"
 
 # 4. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
 log "STEP 4: 인프라 설정 파일을 작성합니다..."
 {
-  mkdir -p /data/app
   cat <<EOF > /etc/infra-asset-config
 AWS_REGION=${aws_region}
 S3_BUCKET=${s3_bucket_name}

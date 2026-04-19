@@ -83,21 +83,19 @@ REPO
 
   dnf install alloy -y
   usermod -aG docker alloy
+  mkdir -p /etc/systemd/system/alloy.service.d
+  cat <<'EOF' > /etc/systemd/system/alloy.service.d/override.conf
+[Service]
+EnvironmentFile=-/etc/sysconfig/alloy
+EOF
+  systemctl daemon-reload
   systemctl enable alloy
 } || error_handler "Grafana Alloy 설치"
-
-# 5. DB 초기화 스크립트 배치 (최초 1회)
-log "STEP 5: DB 초기화 스크립트를 배치합니다..."
-{
-  mkdir -p /data/app
-  cat <<'EOF' > /data/app/init-db.sql
-${init_db_sql}
-EOF
-} || error_handler "DB 초기화 스크립트 배치"
 
 # 6. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
 log "STEP 6: 인프라 설정 파일을 작성합니다..."
 {
+  mkdir -p /data/app
   cat <<EOF > /etc/infra-asset-config
 AWS_REGION=${aws_region}
 S3_BUCKET=${s3_bucket_name}

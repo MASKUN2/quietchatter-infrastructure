@@ -37,7 +37,6 @@ resource "aws_instance" "controlplane" {
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
     aws_region     = var.aws_region
     s3_bucket_name = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
-    init_db_sql    = file("${path.module}/init-db.sql")
   })
 
   # 데이터 유실 방지를 위한 AMI 교체 무시 설정

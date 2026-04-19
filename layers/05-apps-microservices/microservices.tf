@@ -13,20 +13,16 @@ resource "aws_launch_template" "microservice" {
   }
 
   user_data = base64encode(templatefile("${path.module}/templates/user_data.sh.tftpl", {
-    aws_region                  = var.aws_region
-    db_password_secret_name     = data.terraform_remote_state.base.outputs.db_password_secret_name
-    grafana_api_key_secret_name = data.terraform_remote_state.base.outputs.grafana_api_key_secret_name
-    alloy_config                = templatefile("${path.module}/templates/config.alloy.tftpl", {
-      instance_name = "quietchatter-${each.key}-node"
-      loki_url      = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
-      loki_user     = data.terraform_remote_state.base.outputs.grafana_cloud_user
-    })
-    docker_compose_config = templatefile("${path.module}/templates/docker-compose.microservice-${each.key}.yaml.tftpl", {
-      controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
-      service_image   = each.value.image_var
-      db_host         = data.terraform_remote_state.platform.outputs.controlplane_private_ip
-      db_username     = data.terraform_remote_state.base.outputs.db_username
-    })
+    aws_region       = var.aws_region
+    s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    controlplane_ip  = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    service_image    = each.value.image_var
+    instance_name    = "quietchatter-${each.key}-node"
+    loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user
+    db_host          = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    db_username      = data.terraform_remote_state.base.outputs.db_username
+    app_name         = each.key
   }))
 
   tag_specifications {

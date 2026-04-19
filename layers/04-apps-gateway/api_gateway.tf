@@ -1,17 +1,3 @@
-locals {
-  # Alloy 및 Docker Compose 설정을 미리 렌더링하여 가독성 개선
-  alloy_config = templatefile("${path.module}/templates/config.alloy.tftpl", {
-    instance_name = "quietchatter-api-gateway-node"
-    loki_url      = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
-    loki_user     = data.terraform_remote_state.base.outputs.grafana_cloud_user
-  })
-
-  docker_compose_config = templatefile("${path.module}/templates/docker-compose.gateway.yaml.tftpl", {
-    controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
-    service_image   = var.api_gateway_image
-  })
-}
-
 resource "aws_instance" "api_gateway" {
   ami           = var.ami_id
   instance_type = "t4g.micro"
@@ -25,10 +11,13 @@ resource "aws_instance" "api_gateway" {
   user_data_replace_on_change = true
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
-    aws_region                  = var.aws_region
-    grafana_api_key_secret_name = data.terraform_remote_state.base.outputs.grafana_api_key_secret_name
-    alloy_config                = local.alloy_config
-    docker_compose_config       = local.docker_compose_config
+    aws_region       = var.aws_region
+    s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    controlplane_ip  = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    service_image    = var.api_gateway_image
+    instance_name    = "quietchatter-api-gateway-node"
+    loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user
   })
 
   tags = {

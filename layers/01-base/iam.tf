@@ -35,10 +35,7 @@ resource "aws_iam_role_policy" "secrets_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        Action = [
-          "secretsmanager:GetSecretValue",
-          "secretsmanager:DescribeSecret"
-        ]
+        Action = ["secretsmanager:GetSecretValue"]
         Effect = "Allow"
         Resource = [
           aws_secretsmanager_secret.db_password.arn,
@@ -48,11 +45,6 @@ resource "aws_iam_role_policy" "secrets_policy" {
           aws_secretsmanager_secret.jwt_secret_key.arn,
           aws_secretsmanager_secret.bff_jwt_secret_key.arn
         ]
-      },
-      {
-        Action   = ["secretsmanager:ListSecrets"]
-        Effect   = "Allow"
-        Resource = "*"
       },
       {
         Action = [

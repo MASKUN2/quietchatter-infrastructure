@@ -16,6 +16,7 @@ sysctl -p /etc/sysctl.d/99-nat.conf
 log "STEP 2: IPTables NAT 설정을 진행합니다..."
 dnf install iptables-nft iptables-services -y
 /usr/sbin/iptables -t nat -A POSTROUTING -s ${vpc_cidr} -j MASQUERADE
+/usr/sbin/iptables-save > /etc/sysconfig/iptables
 systemctl enable --now iptables
 
 log "INFO: 모든 NAT 설정이 완료되었습니다."

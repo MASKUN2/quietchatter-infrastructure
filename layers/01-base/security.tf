@@ -79,16 +79,14 @@ resource "aws_security_group" "api_gateway" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port       = 80
+    from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.ingress.id]
-    # cidr_blocks = [var.vpc_cidr]
-
   }
 
   ingress {
-    from_port       = 80
+    from_port       = 8080
     to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.frontend.id]
@@ -134,14 +132,6 @@ resource "aws_security_group" "microservices" {
     security_groups = [
       aws_security_group.api_gateway.id
     ]
-  }
-
-  # Allow all internal traffic from VPC
-  ingress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {

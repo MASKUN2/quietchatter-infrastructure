@@ -12,7 +12,6 @@ resource "aws_instance" "ingress" {
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
     aws_region     = var.aws_region
     s3_bucket_name = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
-    vpc_cidr       = data.terraform_remote_state.base.outputs.vpc_cidr
   })
 
   tags = {
