@@ -1,12 +1,14 @@
 resource "aws_eip" "gateway" {
-  domain   = "vpc"
-  instance = aws_instance.gateway.id
+  domain = "vpc"
 
   tags = {
     Name = "quietchatter-gateway-eip"
   }
+}
 
-  depends_on = [aws_instance.gateway]
+resource "aws_eip_association" "gateway" {
+  instance_id   = aws_instance.gateway.id
+  allocation_id = aws_eip.gateway.id
 }
 
 resource "aws_instance" "gateway" {

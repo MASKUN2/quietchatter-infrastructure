@@ -74,7 +74,7 @@ resource "aws_autoscaling_group" "microservice" {
     preferences {
       min_healthy_percentage = 0
     }
-    triggers = ["tag", "launch_template"]
+    triggers = ["tag"]
   }
 
   tag {
