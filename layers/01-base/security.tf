@@ -24,13 +24,12 @@ resource "aws_security_group" "nat" {
   }
 }
 
-# Ingress Security Group (Dedicated for NGINX Ingress)
-resource "aws_security_group" "ingress" {
-  name        = "quietchatter-ingress-sg"
-  description = "Security group for NGINX Ingress"
+# Gateway Security Group (NGINX + Spring Cloud Gateway, co-located on public subnet)
+resource "aws_security_group" "gateway" {
+  name        = "quietchatter-gateway-sg"
+  description = "Security group for Gateway node (NGINX + Spring Cloud Gateway)"
   vpc_id      = aws_vpc.main.id
 
-  # HTTP/HTTPS for NGINX
   ingress {
     from_port   = 80
     to_port     = 80
@@ -45,7 +44,13 @@ resource "aws_security_group" "ingress" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Consul Serf LAN (Internal)
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
   ingress {
     from_port   = 8301
     to_port     = 8301
@@ -68,54 +73,7 @@ resource "aws_security_group" "ingress" {
   }
 
   tags = {
-    Name = "quietchatter-ingress-sg"
-  }
-}
-
-# API Gateway Security Group
-resource "aws_security_group" "api_gateway" {
-  name        = "quietchatter-api-gateway-sg"
-  description = "Security group for API Gateway"
-  vpc_id      = aws_vpc.main.id
-
-  ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.ingress.id]
-  }
-
-  ingress {
-    from_port       = 8080
-    to_port         = 8080
-    protocol        = "tcp"
-    security_groups = [aws_security_group.frontend.id]
-  }
-
-  # Consul Serf LAN (Internal)
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "quietchatter-api-gateway-sg"
+    Name = "quietchatter-gateway-sg"
   }
 }
 
@@ -130,7 +88,7 @@ resource "aws_security_group" "microservices" {
     to_port   = 65535
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -156,9 +114,7 @@ resource "aws_security_group" "frontend" {
     from_port       = 3000
     to_port         = 3000
     protocol        = "tcp"
-    security_groups = [aws_security_group.ingress.id]
-    # cidr_blocks = [var.vpc_cidr]
-
+    security_groups = [aws_security_group.gateway.id]
   }
 
   ingress {
@@ -200,7 +156,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -211,7 +167,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -222,7 +178,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -232,7 +188,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -242,7 +198,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -253,7 +209,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 
@@ -263,7 +219,7 @@ resource "aws_security_group" "controlplane" {
     protocol        = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
-      aws_security_group.api_gateway.id
+      aws_security_group.gateway.id
     ]
   }
 

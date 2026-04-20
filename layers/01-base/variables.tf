@@ -46,10 +46,10 @@ variable "controlplane_private_ip" {
   default     = "10.0.101.100"
 }
 
-variable "api_gateway_private_ip" {
-  description = "Static private IP for the API Gateway Node"
+variable "gateway_private_ip" {
+  description = "Static private IP for the Gateway Node (public subnet, 10.0.1.0/24)"
   type        = string
-  default     = "10.0.101.200"
+  default     = "10.0.1.100"
 }
 
 variable "db_password" {
