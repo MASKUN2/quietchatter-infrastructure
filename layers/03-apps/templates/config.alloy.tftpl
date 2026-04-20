@@ -1,0 +1,66 @@
+logging {
+  level = "info"
+}
+
+// System Logs (journald)
+loki.relabel "journal" {
+  forward_to = [loki.write.grafana_cloud.receiver]
+
+  rule {
+    source_labels = ["__journal__systemd_unit"]
+    target_label  = "unit"
+  }
+}
+
+loki.source.journal "read" {
+  forward_to    = [loki.relabel.journal.receiver]
+  relabel_rules = loki.relabel.journal.rules
+  labels        = {
+    job          = "quietchatter/system",
+    instance     = "${instance_name}",
+    service_name = "system",
+  }
+}
+
+// Docker Discovery & Relabeling
+discovery.docker "linux" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "docker" {
+  targets = discovery.docker.linux.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    replacement   = "$1"
+    target_label  = "service_name"
+  }
+
+  rule {
+    target_label = "instance"
+    replacement  = "${instance_name}"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "quietchatter/docker"
+  }
+}
+
+loki.source.docker "logs" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.docker.output
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = "${loki_url}"
+
+    basic_auth {
+      username = "${loki_user}"
+      password = sys.env("GRAFANA_API_KEY")
+    }
+  }
+}
