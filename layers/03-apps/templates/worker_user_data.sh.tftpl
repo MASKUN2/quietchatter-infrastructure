@@ -10,7 +10,7 @@ error_handler() {
   exit 1
 }
 
-log "INFO: Gateway userdata 스크립트 실행을 시작합니다."
+log "INFO: Worker userdata 스크립트 실행을 시작합니다."
 
 # 0. 인터넷 연결 확인
 log "STEP 0: 인터넷 연결을 확인하고 있습니다..."
@@ -32,8 +32,15 @@ log "STEP 1: Swap 파일을 생성합니다..."
   fi
 } || error_handler "Swap 설정"
 
-# 2. k3s agent 설치
-log "STEP 2: k3s agent를 설치합니다..."
+# 2. SSM 에이전트 활성화
+log "STEP 2: SSM 에이전트를 활성화합니다..."
+{
+  systemctl enable amazon-ssm-agent
+  systemctl start amazon-ssm-agent
+} || error_handler "SSM 에이전트 설정"
+
+# 3. k3s agent 설치
+log "STEP 3: k3s agent를 설치합니다..."
 {
   K3S_TOKEN=$(aws secretsmanager get-secret-value \
     --region ${aws_region} \
@@ -47,13 +54,13 @@ log "STEP 2: k3s agent를 설치합니다..."
 
   curl -sfL https://get.k3s.io | K3S_TOKEN="$K3S_TOKEN" \
     K3S_URL="https://${k3s_server_ip}:6443" sh -s - agent \
-    --node-label="node-role=gateway"
+    --node-label="node-role=worker"
 
   systemctl enable k3s-agent
 } || error_handler "k3s agent 설치"
 
-# 3. 인프라 설정 파일 작성
-log "STEP 3: 인프라 설정 파일을 작성합니다..."
+# 4. 인프라 설정 파일 작성
+log "STEP 4: 인프라 설정 파일을 작성합니다..."
 {
   cat <<EOF > /etc/infra-asset-config
 AWS_REGION=${aws_region}
@@ -64,4 +71,4 @@ INSTANCE_NAME=${instance_name}
 EOF
 } || error_handler "인프라 설정 파일 작성"
 
-log "INFO: Gateway userdata 완료. 워크로드는 k3s가 스케줄링합니다."
+log "INFO: Worker userdata 완료. 워크로드는 k3s가 스케줄링합니다."

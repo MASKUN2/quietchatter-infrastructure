@@ -25,13 +25,14 @@ resource "aws_instance" "gateway" {
   user_data_replace_on_change = true
 
   user_data = templatefile("${path.module}/templates/gateway_user_data.sh.tftpl", {
-    aws_region      = var.aws_region
-    s3_bucket_name  = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
-    controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
-    service_image   = var.api_gateway_image
-    instance_name   = "quietchatter-gateway-node"
-    loki_url        = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
-    loki_user       = data.terraform_remote_state.base.outputs.grafana_cloud_user
+    aws_region       = var.aws_region
+    s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    k3s_server_ip    = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    k3s_token_secret = data.terraform_remote_state.base.outputs.k3s_token_secret_name
+    service_image    = var.api_gateway_image
+    instance_name    = "quietchatter-gateway-node"
+    loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user
   })
 
   tags = {
@@ -39,88 +40,33 @@ resource "aws_instance" "gateway" {
   }
 }
 
-# Launch Template for Microservices
-resource "aws_launch_template" "microservice" {
-  for_each = var.microservices
-
-  name_prefix   = "quietchatter-${each.key}-lt-"
-  image_id      = var.ami_id
-  instance_type = "t4g.micro"
+# Worker Node (replaces per-service ASGs)
+resource "aws_instance" "worker" {
+  ami           = var.ami_id
+  instance_type = "t4g.small"
+  subnet_id     = data.terraform_remote_state.base.outputs.private_subnet_ids[0]
+  private_ip    = var.worker_private_ip
 
   vpc_security_group_ids = [data.terraform_remote_state.base.outputs.microservices_sg_id]
+  iam_instance_profile   = data.terraform_remote_state.base.outputs.ssm_profile_name
 
-  iam_instance_profile {
-    name = data.terraform_remote_state.base.outputs.ssm_profile_name
+  user_data_replace_on_change = true
+
+  user_data = templatefile("${path.module}/templates/worker_user_data.sh.tftpl", {
+    aws_region       = var.aws_region
+    s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    k3s_server_ip    = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    k3s_token_secret = data.terraform_remote_state.base.outputs.k3s_token_secret_name
+    instance_name    = "quietchatter-worker-node"
+    loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user
+  })
+
+  lifecycle {
+    ignore_changes = [ami]
   }
 
-  user_data = base64encode(templatefile("${path.module}/templates/microservices_user_data.sh.tftpl", {
-    aws_region      = var.aws_region
-    s3_bucket_name  = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
-    controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
-    service_image   = each.value.image_var
-    instance_name   = "quietchatter-${each.key}-node"
-    loki_url        = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
-    loki_user       = data.terraform_remote_state.base.outputs.grafana_cloud_user
-    db_host         = data.terraform_remote_state.platform.outputs.rds_address
-    db_username     = data.terraform_remote_state.base.outputs.db_username
-    app_name        = each.key
-  }))
-
-  tag_specifications {
-    resource_type = "instance"
-    tags = {
-      Name    = "quietchatter-${each.key}-node"
-      Service = each.key
-    }
-  }
-
-  # Ensure instances are replaced on user_data change
-  update_default_version = true
-}
-
-# Auto Scaling Group for Microservices
-resource "aws_autoscaling_group" "microservice" {
-  for_each = var.microservices
-
-  name                = "quietchatter-${each.key}-asg"
-  vpc_zone_identifier = data.terraform_remote_state.base.outputs.private_subnet_ids
-  desired_capacity    = 1
-  min_size            = 1
-  max_size            = 1
-
-  mixed_instances_policy {
-    instances_distribution {
-      on_demand_base_capacity                  = 0
-      on_demand_percentage_above_base_capacity = 0
-      spot_allocation_strategy                 = "price-capacity-optimized"
-    }
-
-    launch_template {
-      launch_template_specification {
-        launch_template_id = aws_launch_template.microservice[each.key].id
-        version            = "$Latest"
-      }
-
-      override {
-        instance_type = "t4g.micro"
-      }
-      override {
-        instance_type = "t4g.small"
-      }
-    }
-  }
-
-  instance_refresh {
-    strategy = "Rolling"
-    preferences {
-      min_healthy_percentage = 0
-    }
-    triggers = ["tag"]
-  }
-
-  tag {
-    key                 = "Name"
-    value               = "quietchatter-${each.key}-asg-node"
-    propagate_at_launch = true
+  tags = {
+    Name = "quietchatter-worker-node"
   }
 }
