@@ -12,10 +12,10 @@ instruction:
 
 ## 목적 및 전략
 
-본 인프라는 AWS 환경에서 최소한의 비용으로 마이크로서비스를 안정적으로 운영하기위한 구조를 채택합니다.
+본 인프라는 AWS 환경에서 최소한의 비용으로 마이크로서비스를 k3s 클러스터로 운영하기 위한 구조를 채택합니다.
 
-- 통합 컨트롤 플레인: 관리 서비스와 데이터 저장소를 하나의 노드에 통합하여 인스턴스 유지 비용 최소화
-- Consul 에이전트 기반 통신: 각 애플리케이션 노드에 경량 Consul 클라이언트 에이전트를 배치하여 서비스 검색 안정성 및 로컬 헬스 체크 성능 확보
+- 단일 k3s 클러스터: Controlplane(서버) + Gateway(에이전트) + Worker(에이전트) 3노드 구성
+- 서비스 디스커버리: k3s 내장 CoreDNS, 서비스 이름 기반 DNS(service.namespace.svc.cluster.local)
 - 안정성 강화: 모든 노드에 2GB 스왑 메모리 설정으로 OOM 방어
 - 보안 강화: 22번 포트 차단 및 AWS SSM Session Manager를 통한 무키 접속 환경 구축
 
@@ -23,17 +23,25 @@ instruction:
 
 - 01-base
 	- NAT 노드: 프라이빗 서브넷 인터넷 아웃바운드 라우팅, iptables VPC CIDR 마스커레이딩
+	- 공통 기반: 전체 레이어 보안 그룹, IAM/SSM 프로파일, Secrets Manager 시크릿, S3 자산 버킷 관리
+	- k3s 클러스터 토큰: Secrets Manager에 저장, 모든 노드 부팅 시 조회
 
 - 02-platform
-	- Controlplane 노드: Postgres, Redis, Kafka, Consul 구동. 시스템 상태 및 데이터 관리 핵심부
+	- Controlplane 노드(t4g.small): k3s server, Redis StatefulSet, Redpanda StatefulSet 구동
+	- RDS PostgreSQL: AWS 관리형 db.t4g.micro, 프라이빗 서브넷 배치
 
 - 03-apps
-	- Gateway 노드: 퍼블릭 서브넷, EIP 고정, NGINX + Spring Cloud Gateway, JWT 검증 후 내부 라우팅
-	- Microservices 노드: 프라이빗 서브넷, 각 마이크로서비스 구동
+	- Gateway 노드(t4g.micro, 퍼블릭): k3s agent, EIP 고정. NGINX(HostNetwork) + Spring Cloud Gateway Pod
+	- Worker 노드(t4g.small, 프라이빗): k3s agent. 4개 마이크로서비스 Pod 통합 실행
+
+## 워크로드 배포 방식
+
+매니페스트는 S3(s3://quietchatter-infra-assets/controlplane/manifests/)에서 관리된다.
+Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl apply로 변경을 반영한다.
 
 ## 예상 비용
 
-- 서울 리전 기준 월 총합 약 26.00 달러
+- 서울 리전 기준 월 총합 약 20.00 달러 (3노드: controlplane t4g.small + gateway t4g.micro + worker t4g.small)
 
 ---
 
@@ -57,3 +65,4 @@ instruction:
 - Frontend 노드 제거 (2026-04-26): Next.js BFF 인프라 자원 및 설정 전면 삭제
 - 레이어 6→3 통합 (2026-04-21): 02-ingress 제거, 04~06-apps → 03-apps. remote_state 단순화 및 비용 절감
 - 프로비저닝 안정화: dnf 캐시 충돌 해결, 재시도 로직 및 set -e 적용
+- k3s 전환 (2026-04-26): Consul + Docker Compose 기반 → k3s 단일 클러스터 전환. 서비스 디스커버리를 CoreDNS로 교체, 4개 마이크로서비스 ASG를 단일 Worker EC2로 통합, 비용 절감 및 포트폴리오 k8s 경험 확보
