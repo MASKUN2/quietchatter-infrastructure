@@ -9,7 +9,7 @@
 작업 시작 전 반드시 수행하십시오.
 
 1. INFRASTRUCTURE.md 읽기.
-2. 스킬 목록 확인 후 상황에 맞는 스킬 활성화.
+2. 스킬 목록 확인 후 상황에 맞는 스킬 활성화. (단 작성된 스킬이 실제 프로젝트 상태와 다른경우 중지하고 사용자에게 수정해야한다고 알립니다)
 
 ## 2. 작업 원칙
 
@@ -23,6 +23,10 @@
 - 명명 규칙: quietchatter- 접두사 필수 사용
 - 검증: 코드 수정 후 반드시 terraform validate 실행
 
+### C. 인프라 자산 관리 (S3 Assets)
+- `sync.sh`, `docker-compose.yaml`등은 S3 버킷(`quietchatter-infra-assets`)에서 관리됨
+- 읽기, 수정시에는 임시경로(./.s3-assets/)로 이를 다운받아서 확인후 업로드
+
 ## 3. 주요 기술적 교훈 (Lessons Learned)
 
 ### A. 프로비저닝 및 변수 처리
@@ -33,8 +37,8 @@
 
 ### B. 권한 및 보안
 
-- Docker 소켓 권한: Grafana Alloy 등 호스트의 Docker 소켓을 사용하는 에이전트는 반드시 docker 그룹에 추가되어야 함 (usermod -aG docker alloy)
-- Secret 주입: 모든 민감 정보는 AWS Secrets Manager에 등록 후 user_data에서 부팅 시 조회하여 환경 변수로 주입
+- Docker 소켓 권한: Grafana Alloy 등 호스트의 Docker 소켓을 사용하는 에이전트는 컨테이너로 실행 시 호스트의 `/var/run/docker.sock`을 볼륨 마운트하여 사용함
+- Secret 주입: 모든 민감 정보는 AWS Secrets Manager에 등록 후 `sync.sh`에서 `.env` 파일로 기록하여 Docker Compose 서비스에 주입
 
 ### C. Nginx 설정
 
