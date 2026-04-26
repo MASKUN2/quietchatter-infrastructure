@@ -16,12 +16,6 @@ variable "api_gateway_image" {
   default     = "maskun2/quietchatter-microservice-api-gateway:latest"
 }
 
-variable "frontend_image" {
-  description = "Docker image for the Next.js BFF"
-  type        = string
-  default     = "maskun2/quietchatter-frontend:latest"
-}
-
 variable "microservices" {
   description = "Map of microservices to deploy"
   type = map(object({

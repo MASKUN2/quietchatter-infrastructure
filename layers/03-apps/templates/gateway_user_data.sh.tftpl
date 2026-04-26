@@ -32,8 +32,8 @@ log "STEP 1: Swap 파일을 생성하고 시스템 설정을 진행합니다..."
   fi
 } || error_handler "Swap 설정"
 
-# 2. Docker 설치
-log "STEP 2: Docker 및 Docker Compose를 설치하고 있습니다..."
+# 3. Docker 설치
+log "STEP 3: Docker 및 Docker Compose를 설치하고 있습니다..."
 {
   dnf clean all
   dnf install docker -y || { log "Docker 설치 재시도 중..."; sleep 5; dnf install docker -y; }
@@ -45,34 +45,8 @@ log "STEP 2: Docker 및 Docker Compose를 설치하고 있습니다..."
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 } || error_handler "Docker 설치"
 
-# 3. Grafana Alloy 설치
-log "STEP 3: Grafana Alloy를 설치합니다..."
-{
-  cat << 'REPO' > /etc/yum.repos.d/grafana.repo
-[grafana]
-name=grafana
-baseurl=https://rpm.grafana.com
-repo_gpgcheck=1
-enabled=1
-gpgcheck=1
-gpgkey=https://rpm.grafana.com/gpg.key
-sslverify=1
-sslcacert=/etc/pki/tls/certs/ca-bundle.crt
-REPO
-
-  dnf install alloy -y
-  groupadd -f docker
-  usermod -aG docker alloy
-  mkdir -p /etc/systemd/system/alloy.service.d
-  cat <<'EOF' > /etc/systemd/system/alloy.service.d/override.conf
-[Service]
-EnvironmentFile=-/etc/sysconfig/alloy
-EOF
-  systemctl daemon-reload
-  systemctl enable alloy
-} || error_handler "Grafana Alloy 설치"
-
 # 4. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
+
 log "STEP 4: 인프라 설정 파일을 작성합니다..."
 {
   cat <<EOF > /etc/infra-asset-config

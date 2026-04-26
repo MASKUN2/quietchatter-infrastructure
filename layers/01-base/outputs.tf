@@ -70,16 +70,8 @@ output "ssm_profile_name" {
   value = aws_iam_instance_profile.ssm_profile.name
 }
 
-output "frontend_sg_id" {
-  value = aws_security_group.frontend.id
-}
-
-output "frontend_private_ip" {
-  value = var.frontend_private_ip
-}
-
-output "bff_jwt_secret_name" {
-  value = aws_secretsmanager_secret.bff_jwt_secret_key.name
+output "rds_sg_id" {
+  value = aws_security_group.rds.id
 }
 
 output "naver_client_id_secret_name" {
@@ -88,4 +80,20 @@ output "naver_client_id_secret_name" {
 
 output "naver_client_secret_secret_name" {
   value = aws_secretsmanager_secret.naver_client_secret.name
+}
+
+output "nat_instance_id" {
+  value = aws_instance.nat.id
+}
+
+output "nat_public_ip" {
+  value = aws_eip.nat.public_ip
+}
+
+output "infra_assets_bucket_name" {
+  value = aws_s3_bucket.infra_assets.bucket
+}
+
+output "infra_assets_bucket_arn" {
+  value = aws_s3_bucket.infra_assets.arn
 }

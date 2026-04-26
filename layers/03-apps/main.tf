@@ -1,3 +1,44 @@
+# Gateway EIP
+resource "aws_eip" "gateway" {
+  domain = "vpc"
+
+  tags = {
+    Name = "quietchatter-gateway-eip"
+  }
+}
+
+resource "aws_eip_association" "gateway" {
+  instance_id   = aws_instance.gateway.id
+  allocation_id = aws_eip.gateway.id
+}
+
+# Gateway Node
+resource "aws_instance" "gateway" {
+  ami           = var.ami_id
+  instance_type = "t4g.micro"
+  subnet_id     = data.terraform_remote_state.base.outputs.public_subnet_ids[0]
+  private_ip    = data.terraform_remote_state.base.outputs.gateway_private_ip
+
+  vpc_security_group_ids = [data.terraform_remote_state.base.outputs.gateway_sg_id]
+  iam_instance_profile   = data.terraform_remote_state.base.outputs.ssm_profile_name
+
+  user_data_replace_on_change = true
+
+  user_data = templatefile("${path.module}/templates/gateway_user_data.sh.tftpl", {
+    aws_region      = var.aws_region
+    s3_bucket_name  = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    controlplane_ip = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    service_image   = var.api_gateway_image
+    instance_name   = "quietchatter-gateway-node"
+    loki_url        = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user       = data.terraform_remote_state.base.outputs.grafana_cloud_user
+  })
+
+  tags = {
+    Name = "quietchatter-gateway-node"
+  }
+}
+
 # Launch Template for Microservices
 resource "aws_launch_template" "microservice" {
   for_each = var.microservices
@@ -20,7 +61,7 @@ resource "aws_launch_template" "microservice" {
     instance_name   = "quietchatter-${each.key}-node"
     loki_url        = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
     loki_user       = data.terraform_remote_state.base.outputs.grafana_cloud_user
-    db_host         = data.terraform_remote_state.platform.outputs.controlplane_private_ip
+    db_host         = data.terraform_remote_state.platform.outputs.rds_address
     db_username     = data.terraform_remote_state.base.outputs.db_username
     app_name        = each.key
   }))

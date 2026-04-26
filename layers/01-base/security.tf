@@ -104,31 +104,20 @@ resource "aws_security_group" "microservices" {
   }
 }
 
-# Frontend (Next.js BFF) Security Group
-resource "aws_security_group" "frontend" {
-  name        = "quietchatter-frontend-sg"
-  description = "Security group for Next.js BFF"
+# RDS Security Group
+resource "aws_security_group" "rds" {
+  name        = "quietchatter-rds-sg"
+  description = "Security group for RDS PostgreSQL"
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port       = 3000
-    to_port         = 3000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.gateway.id]
-  }
-
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
+    from_port = 5432
+    to_port   = 5432
+    protocol  = "tcp"
+    security_groups = [
+      aws_security_group.microservices.id,
+      aws_security_group.controlplane.id
+    ]
   }
 
   egress {
@@ -139,7 +128,7 @@ resource "aws_security_group" "frontend" {
   }
 
   tags = {
-    Name = "quietchatter-frontend-sg"
+    Name = "quietchatter-rds-sg"
   }
 }
 

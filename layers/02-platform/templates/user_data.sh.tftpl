@@ -66,33 +66,7 @@ log "STEP 3: Docker 및 Docker Compose를 설치하고 있습니다..."
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 } || error_handler "Docker 설치"
 
-# 4. Grafana Alloy 설치
-log "STEP 4: Grafana Alloy를 설치합니다..."
-{
-  cat << 'REPO' > /etc/yum.repos.d/grafana.repo
-[grafana]
-name=grafana
-baseurl=https://rpm.grafana.com
-repo_gpgcheck=1
-enabled=1
-gpgcheck=1
-gpgkey=https://rpm.grafana.com/gpg.key
-sslverify=1
-sslcacert=/etc/pki/tls/certs/ca-bundle.crt
-REPO
-
-  dnf install alloy -y
-  usermod -aG docker alloy
-  mkdir -p /etc/systemd/system/alloy.service.d
-  cat <<'EOF' > /etc/systemd/system/alloy.service.d/override.conf
-[Service]
-EnvironmentFile=-/etc/sysconfig/alloy
-EOF
-  systemctl daemon-reload
-  systemctl enable alloy
-} || error_handler "Grafana Alloy 설치"
-
-# 6. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
+# 4. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
 log "STEP 6: 인프라 설정 파일을 작성합니다..."
 {
   mkdir -p /data/app
@@ -100,6 +74,9 @@ log "STEP 6: 인프라 설정 파일을 작성합니다..."
 AWS_REGION=${aws_region}
 S3_BUCKET=${s3_bucket_name}
 S3_PATH_PREFIX=controlplane
+LOKI_URL=${loki_url}
+LOKI_USER=${loki_user}
+INSTANCE_NAME=controlplane
 EOF
 } || error_handler "인프라 설정 파일 작성"
 
