@@ -65,3 +65,23 @@ resource "aws_secretsmanager_secret_version" "jwt_secret_key" {
   secret_id     = aws_secretsmanager_secret.jwt_secret_key.id
   secret_string = var.jwt_secret_key
 }
+
+# k3s Cluster Token (shared by all k3s nodes)
+resource "random_password" "k3s_token" {
+  length  = 64
+  special = false
+}
+
+resource "aws_secretsmanager_secret" "k3s_token" {
+  name                    = "quietchatter-k3s-token"
+  recovery_window_in_days = 0
+
+  tags = {
+    Name = "quietchatter-k3s-token"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "k3s_token" {
+  secret_id     = aws_secretsmanager_secret.k3s_token.id
+  secret_string = random_password.k3s_token.result
+}
