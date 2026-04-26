@@ -74,11 +74,8 @@ resource "random_password" "k3s_token" {
 
 resource "aws_secretsmanager_secret" "k3s_token" {
   name                    = "quietchatter-k3s-token"
+  description             = "k3s cluster join token for QuietChatter infrastructure"
   recovery_window_in_days = 0
-
-  tags = {
-    Name = "quietchatter-k3s-token"
-  }
 }
 
 resource "aws_secretsmanager_secret_version" "k3s_token" {
