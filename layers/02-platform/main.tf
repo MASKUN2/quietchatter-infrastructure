@@ -23,7 +23,7 @@ resource "aws_volume_attachment" "controlplane_att" {
 # Control Plane Node
 resource "aws_instance" "controlplane" {
   ami           = var.ami_id
-  instance_type = "t4g.micro"
+  instance_type = "t4g.small"
   subnet_id     = data.terraform_remote_state.base.outputs.private_subnet_ids[0]
   private_ip    = var.controlplane_private_ip
 
@@ -33,10 +33,11 @@ resource "aws_instance" "controlplane" {
   user_data_replace_on_change = true
 
   user_data = templatefile("${path.module}/templates/user_data.sh.tftpl", {
-    aws_region     = var.aws_region
-    s3_bucket_name = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
-    loki_url       = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
-    loki_user      = data.terraform_remote_state.base.outputs.grafana_cloud_user
+    aws_region       = var.aws_region
+    s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user
+    k3s_token_secret = data.terraform_remote_state.base.outputs.k3s_token_secret_name
   })
 
   lifecycle {

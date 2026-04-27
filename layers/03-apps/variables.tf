@@ -16,16 +16,8 @@ variable "api_gateway_image" {
   default     = "maskun2/quietchatter-microservice-api-gateway:latest"
 }
 
-variable "microservices" {
-  description = "Map of microservices to deploy"
-  type = map(object({
-    port      = number
-    image_var = string
-  }))
-  default = {
-    book     = { port = 8081, image_var = "maskun2/quietchatter-microservice-book:latest" }
-    customer = { port = 8082, image_var = "maskun2/quietchatter-microservice-customer:latest" }
-    member   = { port = 8083, image_var = "maskun2/quietchatter-microservice-member:latest" }
-    talk     = { port = 8084, image_var = "maskun2/quietchatter-microservice-talk:latest" }
-  }
+variable "worker_private_ip" {
+  description = "Static private IP for the Worker Node"
+  type        = string
+  default     = "10.0.101.110"
 }

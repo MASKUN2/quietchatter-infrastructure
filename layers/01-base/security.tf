@@ -51,17 +51,19 @@ resource "aws_security_group" "gateway" {
     cidr_blocks = [var.vpc_cidr]
   }
 
+  # Flannel VXLAN
   ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "tcp"
+    from_port   = 8472
+    to_port     = 8472
+    protocol    = "udp"
     cidr_blocks = [var.vpc_cidr]
   }
 
+  # kubelet
   ingress {
-    from_port   = 8301
-    to_port     = 8301
-    protocol    = "udp"
+    from_port   = 10250
+    to_port     = 10250
+    protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
 
@@ -80,7 +82,7 @@ resource "aws_security_group" "gateway" {
 # Microservices Security Group
 resource "aws_security_group" "microservices" {
   name        = "quietchatter-microservices-sg"
-  description = "Security group for internal microservices"
+  description = "Security group for internal microservices (k3s worker node)"
   vpc_id      = aws_vpc.main.id
 
   ingress {
@@ -90,6 +92,22 @@ resource "aws_security_group" "microservices" {
     security_groups = [
       aws_security_group.gateway.id
     ]
+  }
+
+  # Flannel VXLAN
+  ingress {
+    from_port   = 8472
+    to_port     = 8472
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  # kubelet
+  ingress {
+    from_port   = 10250
+    to_port     = 10250
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
   }
 
   egress {
@@ -135,7 +153,7 @@ resource "aws_security_group" "rds" {
 # Control Plane Node Security Group
 resource "aws_security_group" "controlplane" {
   name        = "quietchatter-controlplane-sg"
-  description = "Security group for Control Plane (DB, Kafka, Redis, Consul)"
+  description = "Security group for Control Plane (k3s server, Kafka, Redis)"
   vpc_id      = aws_vpc.main.id
 
   # PostgreSQL
@@ -212,41 +230,27 @@ resource "aws_security_group" "controlplane" {
     ]
   }
 
-  # Consul UI & API (from within VPC)
+  # k3s API Server
   ingress {
-    from_port   = 8500
-    to_port     = 8500
+    from_port   = 6443
+    to_port     = 6443
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
 
-  # Consul Serf LAN & RPC
+  # Flannel VXLAN
   ingress {
-    from_port   = 8300
-    to_port     = 8301
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 8301
-    to_port     = 8301
+    from_port   = 8472
+    to_port     = 8472
     protocol    = "udp"
     cidr_blocks = [var.vpc_cidr]
   }
 
-  # Consul DNS (Internal)
+  # kubelet
   ingress {
-    from_port   = 8600
-    to_port     = 8600
+    from_port   = 10250
+    to_port     = 10250
     protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  ingress {
-    from_port   = 8600
-    to_port     = 8600
-    protocol    = "udp"
     cidr_blocks = [var.vpc_cidr]
   }
 

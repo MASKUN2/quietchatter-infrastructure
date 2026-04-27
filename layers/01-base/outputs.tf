@@ -97,3 +97,7 @@ output "infra_assets_bucket_name" {
 output "infra_assets_bucket_arn" {
   value = aws_s3_bucket.infra_assets.arn
 }
+
+output "k3s_token_secret_name" {
+  value = aws_secretsmanager_secret.k3s_token.name
+}
