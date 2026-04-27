@@ -24,8 +24,8 @@
 - 검증: 코드 수정 후 반드시 terraform validate 실행
 
 ### C. 인프라 자산 관리 (S3 Assets)
-- `sync.sh`, `docker-compose.yaml`등은 S3 버킷(`quietchatter-infra-assets`)에서 관리됨
-- 읽기, 수정시에는 임시경로(./.s3-assets)로 이를 다운받아서 확인후 업로드한다. 단, 커밋을 할때는 제외한다.
+- `sync.sh`, k8s 매니페스트(`manifests/`)는 S3 버킷(`quietchatter-infra-assets`)에서 관리됨
+- 읽기, 수정시에는 임시경로(./.s3-assets)로 다운받아서 확인 후 업로드한다. 커밋 시에는 제외한다.
 
 ## 3. 주요 기술적 교훈 (Lessons Learned)
 
@@ -37,8 +37,7 @@
 
 ### B. 권한 및 보안
 
-- Docker 소켓 권한: Grafana Alloy 등 호스트의 Docker 소켓을 사용하는 에이전트는 컨테이너로 실행 시 호스트의 `/var/run/docker.sock`을 볼륨 마운트하여 사용함
-- Secret 주입: 모든 민감 정보는 AWS Secrets Manager에 등록 후 `sync.sh`에서 `.env` 파일로 기록하여 Docker Compose 서비스에 주입
+- Secret 주입: 모든 민감 정보는 AWS Secrets Manager에 등록. sync.sh에서 조회 후 kubectl create secret으로 k8s Secret 오브젝트로 변환하여 파드에 환경변수로 주입
 
 ### C. Nginx 설정
 

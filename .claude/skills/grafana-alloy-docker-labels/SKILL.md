@@ -1,45 +1,52 @@
 ---
-name: grafana-alloy-docker-labels
-description: Use when configuring Grafana Alloy to collect Docker container logs, or when service_name and other container metadata labels are empty or missing in Loki
+name: grafana-alloy-k8s-logs
+description: Use when configuring Grafana Alloy DaemonSet to collect Kubernetes pod logs, or when service_name and pod metadata labels are empty or missing in Loki
 ---
 
-# Grafana Alloy Docker Container Labels
+# Grafana Alloy Kubernetes Pod Log Collection
 
 ## Overview
 
-`loki.source.docker`는 로그 엔트리를 포워드할 때 `__meta_*` 레이블을 전달하지 않는다. 따라서 `loki.relabel`에서 `__meta_docker_container_name`을 참조하면 항상 빈 값이 된다. `discovery.relabel`에서 타겟 단계에 레이블을 설정해야 한다.
+Alloy는 k8s DaemonSet으로 각 노드에서 실행되며, Kubernetes API를 통해 파드 로그를 수집한다. `discovery.kubernetes`로 파드를 탐색하고, `loki.source.kubernetes`로 로그를 수집한다.
 
 ## Core Pattern
 
 ```hcl
-# Wrong: loki.relabel에서 __meta_* 참조 - 항상 빈 값
-loki.source.docker "logs" {
-  targets = discovery.docker.linux.targets
-  ...
+// 파드 탐색
+discovery.kubernetes "pods" {
+  role = "pod"
 }
-loki.relabel "add_labels" {
+
+// 레이블 정제 (필요한 메타데이터만 유지)
+discovery.relabel "pods" {
+  targets = discovery.kubernetes.pods.targets
+
   rule {
-    source_labels = ["__meta_docker_container_name"]  // 빈 값
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
     target_label  = "service_name"
   }
 }
 
-# Correct: discovery.relabel에서 타겟 단계에 레이블 설정
-discovery.relabel "docker" {
-  targets = discovery.docker.linux.targets
-  rule {
-    source_labels = ["__meta_docker_container_name"]
-    regex         = "/(.*)"
-    replacement   = "$1"
-    target_label  = "service_name"
-  }
-}
-loki.source.docker "logs" {
-  targets = discovery.relabel.docker.output  // __없는 레이블이 로그 엔트리에 첨부됨
-  ...
+// 로그 수집
+loki.source.kubernetes "pods" {
+  targets    = discovery.relabel.pods.output
+  forward_to = [loki.write.grafana_cloud.receiver]
 }
 ```
 
 ## Why
 
-`loki.source.docker`의 `targets`에 `discovery.relabel.*.output`을 넘기면, `__` 접두사가 없는 레이블(service_name 등)은 로그 엔트리에 그대로 첨부된다. `__meta_*`는 타겟 단계에서만 유효하며 로그 엔트리에는 전파되지 않는다.
+`__meta_kubernetes_*` 레이블은 `discovery.relabel`의 타겟 단계에서만 유효하다. `loki.source.kubernetes`의 targets에 `discovery.relabel.*.output`을 넘기면 `__` 접두사가 없는 레이블(namespace, pod, service_name 등)이 로그 엔트리에 첨부된다.
+
+## 주의사항
+
+- Alloy DaemonSet에는 파드 로그 접근을 위한 ClusterRole이 필요하다 (get, list, watch on pods, pods/log)
+- 노드별로 해당 노드의 파드 로그만 수집하므로 DaemonSet 배포가 필수
