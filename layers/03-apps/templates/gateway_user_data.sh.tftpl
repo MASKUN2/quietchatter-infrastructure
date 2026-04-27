@@ -40,7 +40,7 @@ log "STEP 2: k3s agent를 설치합니다..."
     --secret-id "${k3s_token_secret}" \
     --query 'SecretString' --output text)
 
-  until ping -c 1 ${k3s_server_ip} > /dev/null 2>&1; do
+  until curl -sk --connect-timeout 3 https://${k3s_server_ip}:6443 > /dev/null 2>&1; do
     log "k3s server(${k3s_server_ip}) 대기 중..."
     sleep 5
   done
