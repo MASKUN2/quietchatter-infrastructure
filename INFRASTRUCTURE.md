@@ -27,12 +27,13 @@ instruction:
 	- k3s 클러스터 토큰: Secrets Manager에 저장, 모든 노드 부팅 시 조회
 
 - 02-platform
-	- Controlplane 노드(t4g.small): k3s server, Redis StatefulSet, Redpanda StatefulSet 구동
+	- Controlplane 노드(t4g.micro): k3s server, Redis StatefulSet 구동
+	- Platform 노드(t4g.micro): k3s agent, Redpanda StatefulSet 전용 실행
 	- RDS PostgreSQL: AWS 관리형 db.t4g.micro, 프라이빗 서브넷 배치
 
 - 03-apps
 	- Gateway 노드(t4g.micro, 퍼블릭): k3s agent, EIP 고정. NGINX(HostNetwork) + Spring Cloud Gateway Pod
-	- Worker 노드(t4g.small, 프라이빗): k3s agent. 4개 마이크로서비스 Pod 통합 실행
+	- Worker ASG(t4g.small, Spot-only, min=1/max=3): k3s agent. 4개 마이크로서비스 Pod 통합 실행. CPU 70% 초과 시 자동 스케일아웃
 
 ## 워크로드 배포 방식
 
@@ -41,7 +42,7 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 
 ## 예상 비용
 
-- 서울 리전 기준 월 총합 약 20.00 달러 (3노드: controlplane t4g.small + gateway t4g.micro + worker t4g.small)
+- 서울 리전 기준 월 총합 약 10.80 달러 (4노드: controlplane t4g.micro + platform t4g.micro + gateway t4g.micro + worker t4g.small Spot)
 
 ---
 
@@ -55,6 +56,20 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 - 보안: Let's Encrypt/ACM HTTPS 적용, 노드별 IAM Role 세분화
 - 관찰성: Node Exporter/Prometheus 메트릭 수집, 임계치 알람 구성
 - 운영: sync.sh를 /home/ec2-user/로 이동
+
+## 비표준 구현 및 표준 대안
+
+현재 구현이 업계 표준과 다른 부분과 그 대안을 기록한다.
+
+워크로드 배포(sync.sh S3 폴링):
+- 현재: controlplane systemd 타이머가 5분마다 S3에서 매니페스트를 받아 kubectl apply
+- 표준: ArgoCD 또는 Flux (GitOps). Git 저장소를 직접 감시하다 변경 즉시 반영. 배포 이력 추적 및 롤백 UI 제공
+- 채택 이유: 포트폴리오 규모에서 ArgoCD 운영 비용(메모리, 복잡도) 대비 효용이 낮아 단순화
+
+시크릿 주입(sync.sh 수동 변환):
+- 현재: sync.sh가 AWS Secrets Manager 값을 조회해 kubectl create secret으로 k8s Secret을 직접 생성
+- 표준: External Secrets Operator(ESO). k8s CRD로 선언하면 ESO가 Secrets Manager를 감시하며 자동 동기화
+- 채택 이유: ESO 설치 및 CRD 관리 복잡도 대비 소규모 시크릿 수가 적어 현재는 수동으로 충분
 
 ## 과거 의사결정
 
