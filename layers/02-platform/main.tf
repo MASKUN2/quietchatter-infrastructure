@@ -56,7 +56,7 @@ resource "aws_instance" "platform" {
   subnet_id     = data.terraform_remote_state.base.outputs.private_subnet_ids[0]
   private_ip    = var.platform_private_ip
 
-  vpc_security_group_ids = [data.terraform_remote_state.base.outputs.microservices_sg_id]
+  vpc_security_group_ids = [data.terraform_remote_state.base.outputs.platform_sg_id]
   iam_instance_profile   = data.terraform_remote_state.base.outputs.ssm_profile_name
 
   user_data_replace_on_change = true
