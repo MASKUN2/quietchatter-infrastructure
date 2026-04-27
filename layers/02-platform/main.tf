@@ -18,6 +18,11 @@ resource "aws_instance" "controlplane" {
     k3s_token_secret = data.terraform_remote_state.base.outputs.k3s_token_secret_name
   })
 
+  root_block_device {
+    volume_size = 24
+    volume_type = "gp3"
+  }
+
   lifecycle {
     ignore_changes = [ami]
   }
