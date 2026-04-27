@@ -35,7 +35,7 @@ resource "aws_instance" "controlplane" {
 # Platform Node (Redpanda only)
 resource "aws_instance" "platform" {
   ami           = var.ami_id
-  instance_type = "t4g.micro"
+  instance_type = "t4g.small"
   subnet_id     = data.terraform_remote_state.base.outputs.private_subnet_ids[0]
   private_ip    = var.platform_private_ip
 
