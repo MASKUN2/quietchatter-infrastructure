@@ -17,7 +17,13 @@ variable "ami_id" {
 }
 
 variable "controlplane_private_ip" {
-  description = "Static private IP for the Control Plane Node (Consul, DB, etc.)"
+  description = "Static private IP for the Control Plane Node"
   type        = string
   default     = "10.0.101.100"
+}
+
+variable "platform_private_ip" {
+  description = "Static private IP for the Platform Node (Redpanda)"
+  type        = string
+  default     = "10.0.101.120"
 }

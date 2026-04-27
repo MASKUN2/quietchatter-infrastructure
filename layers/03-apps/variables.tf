@@ -16,8 +16,3 @@ variable "api_gateway_image" {
   default     = "maskun2/quietchatter-microservice-api-gateway:latest"
 }
 
-variable "worker_private_ip" {
-  description = "Static private IP for the Worker Node"
-  type        = string
-  default     = "10.0.101.110"
-}
