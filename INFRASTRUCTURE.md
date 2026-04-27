@@ -1,11 +1,7 @@
 ---
 description: QuietChatter 인프라 구축 전략, 배포 가이드, 현재 상태 및 주요 의사결정 이력을 통합한 단일 문서
 user-review:
-instruction: 
-	- 섹션구조 레벨을 #, ## 까지만 허용
-	- "# 2. 히스토리 및 의사결정 요약" 은 매 작업마다 압축하십시오.
-	- frontmatter "user-review" 에 대한 작업이 완료된 경우, 리뷰 내용만 지움.
-	
+
 ---
 
 # 1. 아키텍처 개요
@@ -14,7 +10,7 @@ instruction:
 
 본 인프라는 AWS 환경에서 최소한의 비용으로 마이크로서비스를 k3s 클러스터로 운영하기 위한 구조를 채택합니다.
 
-- 단일 k3s 클러스터: Controlplane(서버) + Gateway(에이전트) + Worker(에이전트) 3노드 구성
+- 단일 k3s 클러스터: Controlplane(서버) + Platform(에이전트) + Gateway(에이전트) + Worker ASG(에이전트) 4노드 구성
 - 서비스 디스커버리: k3s 내장 CoreDNS, 서비스 이름 기반 DNS(service.namespace.svc.cluster.local)
 - 안정성 강화: 모든 노드에 2GB 스왑 메모리 설정으로 OOM 방어
 - 보안 강화: 22번 포트 차단 및 AWS SSM Session Manager를 통한 무키 접속 환경 구축
@@ -81,3 +77,4 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 - 레이어 6→3 통합 (2026-04-21): 02-ingress 제거, 04~06-apps → 03-apps. remote_state 단순화 및 비용 절감
 - 프로비저닝 안정화: dnf 캐시 충돌 해결, 재시도 로직 및 set -e 적용
 - k3s 전환 (2026-04-26): Consul + Docker Compose 기반 → k3s 단일 클러스터 전환. 서비스 디스커버리를 CoreDNS로 교체, 4개 마이크로서비스 ASG를 단일 Worker EC2로 통합, 비용 절감 및 포트폴리오 k8s 경험 확보
+- 노드 구조 개편 (2026-04-27): Redpanda를 Controlplane에서 분리해 전용 Platform 노드(t4g.micro)로 이동. Controlplane을 t4g.small → t4g.micro로 다운그레이드. Worker EC2를 Spot-only ASG(min=1/max=3)로 전환. 월 비용 ~$20 → ~$10.80으로 절감
