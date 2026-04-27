@@ -1,12 +1,12 @@
 ---
 description: QuietChatter 인프라 구축 전략, 배포 가이드, 현재 상태 및 주요 의사결정 이력을 통합한 단일 문서
 user-review:
-instruction: 
-	- 섹션구조 레벨을 #, ## 까지만 허용
-	- "# 2. 히스토리 및 의사결정 요약" 은 매 작업마다 압축하십시오.
-	- frontmatter "user-review" 에 대한 작업이 완료된 경우, 리뷰 내용만 지움.
-	
+instructions: |-
+  -섹션구조 레벨을 #, ## 까지만 허용
+  - "# 2. 히스토리 및 의사결정 요약" 은 매 작업마다 압축하십시오.
+  - frontmatter "user-review" 에 대한 작업이 완료된 경우, 리뷰 내용만 지움.
 ---
+
 
 # 1. 아키텍처 개요
 
