@@ -1,25 +1,3 @@
-# Control Plane Data Volume
-resource "aws_ebs_volume" "controlplane_data" {
-  availability_zone = var.azs[0]
-  size              = 15
-  type              = "gp3"
-
-  lifecycle {
-    prevent_destroy = true
-  }
-
-  tags = {
-    Name = "quietchatter-controlplane-data"
-  }
-}
-
-resource "aws_volume_attachment" "controlplane_att" {
-  device_name  = "/dev/sdb"
-  volume_id    = aws_ebs_volume.controlplane_data.id
-  instance_id  = aws_instance.controlplane.id
-  force_detach = true
-}
-
 # Control Plane Node
 resource "aws_instance" "controlplane" {
   ami           = var.ami_id
