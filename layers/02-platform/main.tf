@@ -23,7 +23,7 @@ resource "aws_volume_attachment" "controlplane_att" {
 # Control Plane Node
 resource "aws_instance" "controlplane" {
   ami           = var.ami_id
-  instance_type = "t4g.small"
+  instance_type = "t4g.micro"
   subnet_id     = data.terraform_remote_state.base.outputs.private_subnet_ids[0]
   private_ip    = var.controlplane_private_ip
 
@@ -46,6 +46,36 @@ resource "aws_instance" "controlplane" {
 
   tags = {
     Name = "quietchatter-controlplane-node"
+  }
+}
+
+# Platform Node (Redpanda only)
+resource "aws_instance" "platform" {
+  ami           = var.ami_id
+  instance_type = "t4g.micro"
+  subnet_id     = data.terraform_remote_state.base.outputs.private_subnet_ids[0]
+  private_ip    = var.platform_private_ip
+
+  vpc_security_group_ids = [data.terraform_remote_state.base.outputs.microservices_sg_id]
+  iam_instance_profile   = data.terraform_remote_state.base.outputs.ssm_profile_name
+
+  user_data_replace_on_change = true
+
+  user_data = templatefile("${path.module}/templates/platform_user_data.sh.tftpl", {
+    aws_region       = var.aws_region
+    s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
+    k3s_server_ip    = aws_instance.controlplane.private_ip
+    k3s_token_secret = data.terraform_remote_state.base.outputs.k3s_token_secret_name
+    loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
+    loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user
+  })
+
+  lifecycle {
+    ignore_changes = [ami]
+  }
+
+  tags = {
+    Name = "quietchatter-platform-node"
   }
 }
 

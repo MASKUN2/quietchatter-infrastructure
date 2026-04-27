@@ -1,0 +1,74 @@
+#!/bin/bash
+set -e
+
+log() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')] $1"
+}
+
+error_handler() {
+  log "ERROR: $1 단계에서 문제가 발생했습니다. 작업을 중단합니다."
+  exit 1
+}
+
+log "INFO: Platform userdata 스크립트 실행을 시작합니다."
+
+# 0. 인터넷 연결 확인
+log "STEP 0: 인터넷 연결을 확인하고 있습니다..."
+until ping -c 1 8.8.8.8 > /dev/null 2>&1; do
+  log "인터넷 연결 대기 중 (5초 후 재시도)..."
+  sleep 5
+done
+log "인터넷 연결 확인 완료."
+
+# 1. Swap 설정
+log "STEP 1: Swap 파일을 생성합니다..."
+{
+  dd if=/dev/zero of=/swapfile bs=128M count=16
+  chmod 600 /swapfile
+  mkswap /swapfile
+  swapon /swapfile
+  if ! grep -q "/swapfile" /etc/fstab; then
+    echo "/swapfile swap swap defaults 0 0" >> /etc/fstab
+  fi
+} || error_handler "Swap 설정"
+
+# 2. SSM 에이전트 활성화
+log "STEP 2: SSM 에이전트를 활성화합니다..."
+{
+  systemctl enable amazon-ssm-agent
+  systemctl start amazon-ssm-agent
+} || error_handler "SSM 에이전트 설정"
+
+# 3. k3s agent 설치
+log "STEP 3: k3s agent를 설치합니다..."
+{
+  K3S_TOKEN=$(aws secretsmanager get-secret-value \
+    --region ${aws_region} \
+    --secret-id "${k3s_token_secret}" \
+    --query 'SecretString' --output text)
+
+  until ping -c 1 ${k3s_server_ip} > /dev/null 2>&1; do
+    log "k3s server(${k3s_server_ip}) 대기 중..."
+    sleep 5
+  done
+
+  curl -sfL https://get.k3s.io | K3S_TOKEN="$K3S_TOKEN" \
+    K3S_URL="https://${k3s_server_ip}:6443" sh -s - agent \
+    --node-label="node-role=platform"
+
+  systemctl enable k3s-agent
+} || error_handler "k3s agent 설치"
+
+# 4. 인프라 설정 파일 작성
+log "STEP 4: 인프라 설정 파일을 작성합니다..."
+{
+  cat <<EOF > /etc/infra-asset-config
+AWS_REGION=${aws_region}
+S3_BUCKET=${s3_bucket_name}
+LOKI_URL=${loki_url}
+LOKI_USER=${loki_user}
+INSTANCE_NAME=quietchatter-platform-node
+EOF
+} || error_handler "인프라 설정 파일 작성"
+
+log "INFO: Platform userdata 완료. 워크로드는 k3s가 스케줄링합니다."
