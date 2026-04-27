@@ -25,7 +25,7 @@
 
 ### C. 인프라 자산 관리 (S3 Assets)
 - `sync.sh`, `docker-compose.yaml`등은 S3 버킷(`quietchatter-infra-assets`)에서 관리됨
-- 읽기, 수정시에는 임시경로(./.s3-assets/)로 이를 다운받아서 확인후 업로드
+- 읽기, 수정시에는 임시경로(./.s3-assets)로 이를 다운받아서 확인후 업로드한다. 단, 커밋을 할때는 제외한다.
 
 ## 3. 주요 기술적 교훈 (Lessons Learned)
 

@@ -52,7 +52,7 @@ log "STEP 3: Docker 및 Docker Compose를 설치하고 있습니다..."
   chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
 } || error_handler "Docker 설치"
 
-# 4. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
+# 5. 인프라 설정 파일 작성 (sync.sh가 읽는 설정)
 log "STEP 5: 인프라 설정 파일을 작성합니다..."
 {
   cat <<EOF > /etc/infra-asset-config
@@ -73,23 +73,24 @@ EOF
 # 6. S3에서 sync.sh 다운로드 및 초기 실행
 log "STEP 6: S3에서 sync.sh를 다운로드하고 초기 설정을 실행합니다..."
 {
-  aws s3 cp "s3://${s3_bucket_name}/microservices/scripts/sync.sh" \
-    /usr/local/bin/sync.sh --region ${aws_region}
-  chmod +x /usr/local/bin/sync.sh
-  /usr/local/bin/sync.sh
+  aws s3 cp "s3://${s3_bucket_name}/microservices/sync.sh" \
+    /home/ec2-user/sync.sh --region ${aws_region}
+  chown ec2-user:ec2-user /home/ec2-user/sync.sh
+  chmod +x /home/ec2-user/sync.sh
+  /home/ec2-user/sync.sh
 } || error_handler "sync.sh 초기 실행"
 
 # 7. systemd timer 등록
 log "STEP 7: systemd timer를 등록합니다..."
 {
-  cat <<'EOF' > /etc/systemd/system/infra-asset-sync.service
+  cat <<EOF > /etc/systemd/system/infra-asset-sync.service
 [Unit]
 Description=Infra Asset Sync
 After=network.target docker.service
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/bin/sync.sh
+ExecStart=/home/ec2-user/sync.sh
 StandardOutput=journal
 StandardError=journal
 EOF
