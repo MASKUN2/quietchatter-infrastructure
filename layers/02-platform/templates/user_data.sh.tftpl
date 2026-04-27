@@ -42,7 +42,7 @@ log "STEP 2: k3s server를 설치합니다..."
 
   curl -sfL https://get.k3s.io | K3S_TOKEN="$K3S_TOKEN" sh -s - server \
     --disable=traefik \
-    --node-label="node-role.kubernetes.io/controlplane=true"
+    --node-label="quietchatter.io/role=controlplane"
 
   systemctl enable k3s
   systemctl start k3s

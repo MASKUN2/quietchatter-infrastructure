@@ -54,7 +54,7 @@ log "STEP 3: k3s agent를 설치합니다..."
 
   curl -sfL https://get.k3s.io | K3S_TOKEN="$K3S_TOKEN" \
     K3S_URL="https://${k3s_server_ip}:6443" sh -s - agent \
-    --node-label="node-role.kubernetes.io/worker=true"
+    --node-label="quietchatter.io/role=worker"
 
   systemctl enable k3s-agent
 } || error_handler "k3s agent 설치"
