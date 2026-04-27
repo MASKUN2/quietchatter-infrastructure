@@ -43,3 +43,7 @@
 
 - 보간(Interpolation) 주의: Nginx 설정의 $host 등은 테라폼 보간 ${}과 구분되므로 안전하나, 쉘 스크립트 내에서 혼용 시 반드시 따옴표('EOF')로 감싸서 보호
 
+### D. k8s 노드 라벨링
+
+- k8s-node-labeling 스킬 참조. 노드 라벨, nodeSelector, ROLES 컬럼 관련 작업 시 반드시 확인
+
