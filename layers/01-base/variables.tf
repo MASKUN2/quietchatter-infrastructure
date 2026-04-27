@@ -104,3 +104,10 @@ variable "jwt_secret_key" {
   sensitive   = true
   default     = ""
 }
+
+variable "k3s_token" {
+  description = "k3s cluster join token to store in Secrets Manager"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

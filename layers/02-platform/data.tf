@@ -1,7 +1,9 @@
 data "terraform_remote_state" "base" {
-  backend = "local"
+  backend = "s3"
   config = {
-    path = "../01-base/terraform.tfstate"
+    bucket = "quietchatter-infra-assets"
+    key    = "terraform/state/01-base/terraform.tfstate"
+    region = "ap-northeast-2"
   }
 }
 
