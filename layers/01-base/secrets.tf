@@ -89,3 +89,27 @@ resource "aws_secretsmanager_secret_version" "db_username" {
   secret_id     = aws_secretsmanager_secret.db_username.id
   secret_string = var.db_username
 }
+
+# Grafana Cloud Loki URL Secret
+resource "aws_secretsmanager_secret" "loki_url" {
+  name        = "quietchatter-loki-url"
+  description = "Grafana Cloud Loki push endpoint URL"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "loki_url" {
+  secret_id     = aws_secretsmanager_secret.loki_url.id
+  secret_string = var.grafana_cloud_logs_url
+}
+
+# Grafana Cloud Loki User ID Secret
+resource "aws_secretsmanager_secret" "loki_user" {
+  name        = "quietchatter-loki-user"
+  description = "Grafana Cloud Loki User ID (numeric)"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "loki_user" {
+  secret_id     = aws_secretsmanager_secret.loki_user.id
+  secret_string = var.grafana_cloud_user
+}
