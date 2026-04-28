@@ -77,3 +77,15 @@ resource "aws_secretsmanager_secret_version" "k3s_token" {
   secret_id     = aws_secretsmanager_secret.k3s_token.id
   secret_string = var.k3s_token
 }
+
+# Database Username Secret
+resource "aws_secretsmanager_secret" "db_username" {
+  name        = "quietchatter-db-username"
+  description = "Database master username"
+  recovery_window_in_days = 0
+}
+
+resource "aws_secretsmanager_secret_version" "db_username" {
+  secret_id     = aws_secretsmanager_secret.db_username.id
+  secret_string = var.db_username
+}

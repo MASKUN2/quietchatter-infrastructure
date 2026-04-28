@@ -105,3 +105,7 @@ output "infra_assets_bucket_arn" {
 output "k3s_token_secret_name" {
   value = aws_secretsmanager_secret.k3s_token.name
 }
+
+output "db_username_secret_name" {
+  value = aws_secretsmanager_secret.db_username.name
+}

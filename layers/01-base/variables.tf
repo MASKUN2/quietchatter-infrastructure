@@ -111,3 +111,4 @@ variable "k3s_token" {
   sensitive   = true
   default     = ""
 }
+
