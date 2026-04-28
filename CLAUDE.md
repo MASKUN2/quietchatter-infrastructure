@@ -38,6 +38,12 @@
 ### B. 권한 및 보안
 
 - Secret 주입: 모든 민감 정보는 AWS Secrets Manager에 등록. sync.sh에서 조회 후 kubectl create secret으로 k8s Secret 오브젝트로 변환하여 파드에 환경변수로 주입
+- Secrets Manager 조회 시 `|| echo ""` 폴백 금지. 조회 실패가 빈 문자열로 숨겨지면 앱이 내부 기본값(예: "root")으로 동작하는 장애가 발생함
+
+### E. k8s 운영
+
+- Ghost Node: Spot 인스턴스 종료 후 k3s 노드 레코드가 자동 삭제되지 않음. NotReady 노드가 남아 있으면 수동으로 kubectl delete node 처리 필요
+- Rolling Update: Worker 노드 단일 구성 시 maxSurge: 0, maxUnavailable: 1 적용 필수. 기본값(maxSurge=1)은 단일 노드에서 Pending 상태로 업데이트가 멈춤
 
 ### C. Nginx 설정
 

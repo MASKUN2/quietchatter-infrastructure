@@ -37,17 +37,40 @@ aws s3 cp ./.s3-assets/manifests/<file>.yaml s3://quietchatter-infra-assets/cont
 sync.sh에서 Secrets Manager → k8s Secret 변환:
 
 ```bash
-DB_PASSWORD=$(aws secretsmanager get-secret-value --secret-id quietchatter-db-password --query 'SecretString' --output text)
+DB_USERNAME=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-db-username --query 'SecretString' --output text)
+DB_PASSWORD=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-db-password --query 'SecretString' --output text)
+LOKI_URL=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-loki-url --query 'SecretString' --output text)
+LOKI_USER=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-loki-user --query 'SecretString' --output text)
 
 kubectl create secret generic quietchatter-secrets \
+  --from-literal=DB_USERNAME="$DB_USERNAME" \
   --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+  --from-literal=LOKI_URL="$LOKI_URL" \
+  --from-literal=LOKI_USER="$LOKI_USER" \
   --namespace=quietchatter \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 `--dry-run=client -o yaml | kubectl apply -f -` 패턴을 사용하면 Secret이 이미 존재해도 오류 없이 업데이트된다.
 
+현재 등록된 Secrets Manager 시크릿 목록:
+- `quietchatter-db-username`: RDS PostgreSQL 유저명
+- `quietchatter-db-password`: RDS PostgreSQL 비밀번호
+- `quietchatter-k3s-token`: k3s 클러스터 조인 토큰
+- `quietchatter-grafana-api-key`: Grafana Cloud API 키
+- `quietchatter-loki-url`: Grafana Cloud Loki push endpoint URL
+- `quietchatter-loki-user`: Grafana Cloud Loki User ID (숫자형)
+
 ## Common Mistakes
+
+**Secrets Manager 조회 시 fallback 금지**
+```bash
+# Wrong: 조회 실패 시 빈 문자열로 폴백되어 앱이 기본값(예: "root")을 사용하게 됨
+DB_USERNAME=$(aws secretsmanager ... --output text || echo "")
+
+# Correct: 폴백 없이 실패 시 스크립트 중단 (set -e 환경에서 안전)
+DB_USERNAME=$(aws secretsmanager ... --output text)
+```
 
 **파일 소유권 누락**
 ```bash

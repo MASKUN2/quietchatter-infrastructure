@@ -40,7 +40,7 @@ sudo kubectl logs <pod-name> -n quietchatter
 - controlplane (10.0.101.100, t4g.micro): k3s server + Redis
 - platform (10.0.101.120, t4g.micro): Redpanda
 - gateway (퍼블릭, t4g.micro): NGINX + api-gateway
-- worker ASG (t4g.small, Spot): 4개 마이크로서비스
+- worker ASG (t4g.small, Spot): 3개 마이크로서비스 (member, book, talk)
 
 ## S3 매니페스트 배포 확인
 
@@ -52,4 +52,31 @@ sudo -u ec2-user /home/ec2-user/sync.sh
 
 # 타이머 상태 확인
 systemctl status infra-asset-sync.timer
+```
+
+## Rolling Update 전략
+
+Worker 노드는 Spot ASG min=1 구성이므로 실제 운영 중 노드가 1개인 경우가 많다. 단일 노드에서 maxSurge=1(기본값)이면 업데이트 시 새 파드가 Pending 상태로 멈춘다. 모든 Deployment에 아래 전략이 적용되어 있다.
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 0
+    maxUnavailable: 1
+```
+
+## Ghost Node 처리
+
+Spot 인스턴스가 종료되어도 k3s는 노드 레코드를 자동으로 삭제하지 않는다. NotReady 노드가 남아 있으면 alloy 등 DaemonSet 파드가 해당 노드에서 Terminating 상태로 멈출 수 있다.
+
+```bash
+# NotReady 노드 확인
+kubectl get nodes
+
+# 종료된 노드 삭제 (EC2 콘솔에서 인스턴스 종료 확인 후)
+kubectl delete node <node-name>
+
+# 멈춘 파드 강제 삭제
+kubectl delete pods -n quietchatter -l app=alloy --force --grace-period=0
 ```
