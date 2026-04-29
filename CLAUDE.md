@@ -1,6 +1,6 @@
 # CLAUDE.md - infrastructure
 
-작업 전 INFRASTRUCTURE.md를 읽으십시오. 아키텍처 개요, 레이어 구성, 노드 역할, 배포 방식, 의사결정 이력은 INFRASTRUCTURE.md에 있습니다.
+작업 전 README.md를 읽으십시오. 아키텍처 개요, 레이어 구성, 노드 역할, 배포 방식, 의사결정 이력은 README.md에 있습니다.
 
 루트 프로젝트의 CLAUDE.md에 정의된 공통 원칙도 확인하십시오.
 
