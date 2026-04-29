@@ -20,17 +20,25 @@ description: Use when modifying sync.sh, updating k8s manifests in S3, or managi
 
 ## 매니페스트 수정 절차
 
+S3 자산(sync.sh, manifests/)은 프로젝트 경로에 저장하지 않는다. 세션마다 임시경로를 사용한다.
+
 ```bash
-# 1. S3에서 로컬로 다운로드
-aws s3 sync s3://quietchatter-infra-assets/controlplane/manifests/ ./.s3-assets/manifests/ --region ap-northeast-2
+# 1. 세션 임시경로 생성
+TMP_DIR=$(mktemp -d)
 
-# 2. 로컬에서 수정
+# 2. S3에서 임시경로로 다운로드
+aws s3 sync s3://quietchatter-infra-assets/controlplane/manifests/ "$TMP_DIR/manifests/" --region ap-northeast-2
 
-# 3. S3에 업로드
-aws s3 cp ./.s3-assets/manifests/<file>.yaml s3://quietchatter-infra-assets/controlplane/manifests/<file>.yaml --region ap-northeast-2
+# 3. 임시경로에서 수정
 
-# 4. .s3-assets/ 는 커밋에서 제외
+# 4. S3에 업로드
+aws s3 cp "$TMP_DIR/manifests/<file>.yaml" s3://quietchatter-infra-assets/controlplane/manifests/<file>.yaml --region ap-northeast-2
+
+# 5. 임시경로 정리 (선택)
+rm -rf "$TMP_DIR"
 ```
+
+매니페스트 구조 변경(strategy, env, probe 등)은 S3 직접 수정이 아닌 서비스 서브모듈 k8s/deployment.yaml을 수정하고 커밋한다. GitHub Actions가 이미지 치환 후 S3에 업로드한다.
 
 ## Secret 주입 패턴
 

@@ -40,16 +40,12 @@ instructions: |-
 매니페스트는 S3(s3://quietchatter-infra-assets/controlplane/manifests/)에서 관리된다.
 Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl apply로 변경을 반영한다.
 
-매니페스트 관리는 두 경로가 공존한다.
-
-- 각 서비스 서브모듈의 k8s/deployment.yaml: 이미지 태그가 IMAGE_PLACEHOLDER인 템플릿. GitHub Actions가 이미지 빌드 후 SHA로 치환하여 S3에 업로드한다. 서비스의 구조적 변경(strategy, env, probe 등)은 이 파일을 수정한다.
-- 인프라 모듈의 .s3-assets/manifests/: S3에서 임시로 내려받은 로컬 사본. 실제 이미지 SHA가 포함된 현재 배포 상태를 확인할 때 사용한다. git으로 추적하지 않는다.
-- 인프라 모듈의 scripts/sync.sh: S3에 올라가는 sync.sh의 git 추적 사본. S3 원본과 항상 동일하게 유지해야 한다.
+매니페스트의 구조적 원본은 각 서비스 서브모듈의 k8s/deployment.yaml(IMAGE_PLACEHOLDER 포함 템플릿)이다. GitHub Actions가 이미지 빌드 후 SHA로 치환하여 S3에 업로드한다.
 
 매니페스트 구조 변경 시 지켜야 할 규칙:
 - 서비스 서브모듈 k8s/deployment.yaml을 수정하고 커밋한다. GitHub Actions가 S3를 업데이트한다.
-- 인프라 레벨에서 직접 S3를 수정한 경우(긴급 패치 등), 반드시 해당 변경을 서비스 서브모듈 k8s/deployment.yaml에도 반영하고 커밋한다. 그렇지 않으면 다음 GitHub Actions 실행 시 변경이 롤백된다.
-- sync.sh를 수정한 경우, scripts/sync.sh도 동일하게 업데이트하고 커밋한다.
+- S3를 직접 수정한 경우(긴급 패치 등), 반드시 서비스 서브모듈 k8s/deployment.yaml에도 반영하고 커밋한다. 그렇지 않으면 다음 GitHub Actions 실행 시 변경이 롤백된다.
+- sync.sh를 수정한 경우, S3에 직접 업로드한다. 로컬 복사본을 프로젝트에 두지 않는다.
 
 ## 예상 비용
 
