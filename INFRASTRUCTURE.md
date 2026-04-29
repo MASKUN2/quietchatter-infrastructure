@@ -40,6 +40,17 @@ instructions: |-
 매니페스트는 S3(s3://quietchatter-infra-assets/controlplane/manifests/)에서 관리된다.
 Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl apply로 변경을 반영한다.
 
+매니페스트 관리는 두 경로가 공존한다.
+
+- 각 서비스 서브모듈의 k8s/deployment.yaml: 이미지 태그가 IMAGE_PLACEHOLDER인 템플릿. GitHub Actions가 이미지 빌드 후 SHA로 치환하여 S3에 업로드한다. 서비스의 구조적 변경(strategy, env, probe 등)은 이 파일을 수정한다.
+- 인프라 모듈의 .s3-assets/manifests/: S3에서 임시로 내려받은 로컬 사본. 실제 이미지 SHA가 포함된 현재 배포 상태를 확인할 때 사용한다. git으로 추적하지 않는다.
+- 인프라 모듈의 scripts/sync.sh: S3에 올라가는 sync.sh의 git 추적 사본. S3 원본과 항상 동일하게 유지해야 한다.
+
+매니페스트 구조 변경 시 지켜야 할 규칙:
+- 서비스 서브모듈 k8s/deployment.yaml을 수정하고 커밋한다. GitHub Actions가 S3를 업데이트한다.
+- 인프라 레벨에서 직접 S3를 수정한 경우(긴급 패치 등), 반드시 해당 변경을 서비스 서브모듈 k8s/deployment.yaml에도 반영하고 커밋한다. 그렇지 않으면 다음 GitHub Actions 실행 시 변경이 롤백된다.
+- sync.sh를 수정한 경우, scripts/sync.sh도 동일하게 업데이트하고 커밋한다.
+
 ## 예상 비용
 
 - 서울 리전 기준 월 총합 약 10.80 달러 (4노드: controlplane t4g.micro + platform t4g.micro + gateway t4g.micro + worker t4g.small Spot)
@@ -85,3 +96,4 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 - Loki 시크릿 Secrets Manager 이관 (2026-04-28): grafana_cloud_logs_url, grafana_cloud_user가 /etc/infra-asset-config에 공백으로 프로비저닝되던 문제 수정. quietchatter-loki-url, quietchatter-loki-user를 Secrets Manager에 등록하고 sync.sh에서 런타임 조회로 변경. IAM 인라인 정책에 두 시크릿 ARN 추가
 - Rolling Update 전략 수정 (2026-04-28): Worker 노드 1개 환경에서 maxSurge=1(기본값) 사용 시 업데이트 파드가 Pending 상태로 멈추는 문제 해결. 모든 Deployment(api-gateway, member, book, talk)에 maxSurge: 0, maxUnavailable: 1 적용
 - Ghost Node 처리 (2026-04-28): Spot 인스턴스 종료 후 k3s 노드 레코드가 자동 삭제되지 않아 NotReady 노드와 Terminating DaemonSet 파드가 남는 문제 확인. 수동으로 kubectl delete node 처리. AWS Node Termination Handler 도입을 예정 작업으로 등록
+- 서비스 템플릿 미동기화 수정 (2026-04-29): 인프라 레벨에서 S3 매니페스트에 Rolling Update 전략을 직접 패치했으나 서비스 서브모듈 k8s/deployment.yaml에는 반영되지 않음. 다음 GitHub Actions 실행 시 변경이 롤백될 수 있었던 문제를 사후 발견. 4개 서비스 템플릿에 strategy 블록 추가 커밋. scripts/sync.sh에도 Loki 시크릿 조회 코드 누락 및 금지 패턴(|| echo "") 존재 확인, S3 원본과 동기화하여 수정

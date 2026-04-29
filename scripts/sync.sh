@@ -42,12 +42,18 @@ log "STEP 2: AWS Secrets Manager에서 시크릿을 동기화합니다..."
 DB_PASSWORD=$(aws secretsmanager get-secret-value \
   --region "$AWS_REGION" --secret-id "quietchatter-db-password" \
   --query 'SecretString' --output text)
+DB_USERNAME=$(aws secretsmanager get-secret-value \
+  --region "$AWS_REGION" --secret-id "quietchatter-db-username" \
+  --query 'SecretString' --output text)
 GRAFANA_API_KEY=$(aws secretsmanager get-secret-value \
   --region "$AWS_REGION" --secret-id "quietchatter-grafana-api-key" \
   --query 'SecretString' --output text)
-DB_USERNAME=$(aws secretsmanager get-secret-value \
-  --region "$AWS_REGION" --secret-id "quietchatter-db-username" \
-  --query 'SecretString' --output text 2>/dev/null || echo "")
+LOKI_URL=$(aws secretsmanager get-secret-value \
+  --region "$AWS_REGION" --secret-id "quietchatter-loki-url" \
+  --query 'SecretString' --output text)
+LOKI_USER=$(aws secretsmanager get-secret-value \
+  --region "$AWS_REGION" --secret-id "quietchatter-loki-user" \
+  --query 'SecretString' --output text)
 
 kubectl create namespace quietchatter --dry-run=client -o yaml | kubectl apply -f -
 
