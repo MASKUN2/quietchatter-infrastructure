@@ -14,7 +14,7 @@ instructions: |-
 
 본 인프라는 AWS 환경에서 최소한의 비용으로 마이크로서비스를 k3s 클러스터로 운영하기 위한 구조를 채택합니다.
 
-- 단일 k3s 클러스터: Controlplane(서버) + Platform(에이전트) + Gateway(에이전트) + Worker ASG(에이전트) 4노드 구성
+- 단일 k3s 클러스터: Controlplane(서버) + Gateway(에이전트) + Worker ASG(에이전트) 3노드 구성
 - 서비스 디스커버리: k3s 내장 CoreDNS, 서비스 이름 기반 DNS(service.namespace.svc.cluster.local)
 - 안정성 강화: 모든 노드에 2GB 스왑 메모리 설정으로 OOM 방어
 - 보안 강화: 22번 포트 차단 및 AWS SSM Session Manager를 통한 무키 접속 환경 구축
@@ -27,8 +27,7 @@ instructions: |-
 	- k3s 클러스터 토큰: Secrets Manager에 저장, 모든 노드 부팅 시 조회
 
 - 02-platform
-	- Controlplane 노드(t4g.micro): k3s server, Redis StatefulSet 구동
-	- Platform 노드(t4g.micro): k3s agent, Redpanda StatefulSet 전용 실행
+	- Controlplane 노드(t4g.small): k3s server, Redis StatefulSet, Redpanda StatefulSet 구동
 	- RDS PostgreSQL: AWS 관리형 db.t4g.micro, 프라이빗 서브넷 배치
 
 - 03-apps
@@ -89,6 +88,7 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 - 프로비저닝 안정화: dnf 캐시 충돌 해결, 재시도 로직 및 set -e 적용
 - k3s 전환 (2026-04-26): Consul + Docker Compose 기반 → k3s 단일 클러스터 전환. 서비스 디스커버리를 CoreDNS로 교체, 4개 마이크로서비스 ASG를 단일 Worker EC2로 통합, 비용 절감 및 포트폴리오 k8s 경험 확보
 - 노드 구조 개편 (2026-04-27): Redpanda를 Controlplane에서 분리해 전용 Platform 노드(t4g.micro)로 이동. Controlplane을 t4g.small → t4g.micro로 다운그레이드. Worker EC2를 Spot-only ASG(min=1/max=3)로 전환. 월 비용 ~$20 → ~$10.80으로 절감
+- Controlplane/Platform 통합 (2026-05-02): 비용 절감을 위해 Platform 노드(t4g.micro)를 제거하고 Redpanda를 Controlplane으로 통합. Controlplane을 t4g.small로 업그레이드. EBS 1개 절감. 3노드 구성으로 단순화
 - Loki 시크릿 Secrets Manager 이관 (2026-04-28): grafana_cloud_logs_url, grafana_cloud_user가 /etc/infra-asset-config에 공백으로 프로비저닝되던 문제 수정. quietchatter-loki-url, quietchatter-loki-user를 Secrets Manager에 등록하고 sync.sh에서 런타임 조회로 변경. IAM 인라인 정책에 두 시크릿 ARN 추가
 - Rolling Update 전략 수정 (2026-04-28): Worker 노드 1개 환경에서 maxSurge=1(기본값) 사용 시 업데이트 파드가 Pending 상태로 멈추는 문제 해결. 모든 Deployment(api-gateway, member, book, talk)에 maxSurge: 0, maxUnavailable: 1 적용
 - Ghost Node 처리 (2026-04-28): Spot 인스턴스 종료 후 k3s 노드 레코드가 자동 삭제되지 않아 NotReady 노드와 Terminating DaemonSet 파드가 남는 문제 확인. 수동으로 kubectl delete node 처리. AWS Node Termination Handler 도입을 예정 작업으로 등록

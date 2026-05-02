@@ -11,7 +11,7 @@ description: Use when configuring or troubleshooting k8s node labels, nodeSelect
 
 ```
 키:   quietchatter.io/role
-값:   controlplane | platform | gateway | worker
+값:   controlplane | gateway | worker
 ```
 
 ## 설정 위치
@@ -40,7 +40,7 @@ nodeSelector:
 `kubectl get nodes`의 ROLES 컬럼은 `node-role.kubernetes.io/<role>` 키를 가진 라벨만 읽는다. 이 라벨은 kubelet이 직접 설정할 수 없으므로 controlplane의 sync.sh에서 kubectl로 부여한다.
 
 ```bash
-for role in controlplane platform gateway worker; do
+for role in controlplane gateway worker; do
   kubectl label node -l quietchatter.io/role=$role \
     node-role.kubernetes.io/$role=true --overwrite 2>/dev/null || true
 done
@@ -52,7 +52,6 @@ sync.sh가 5분마다 실행되므로 새 노드 합류 후 최대 5분 내에 R
 
 | 노드 | quietchatter.io/role | 주요 워크로드 |
 |---|---|---|
-| controlplane | controlplane | k3s server, Redis |
-| platform | platform | Redpanda |
+| controlplane | controlplane | k3s server, Redis, Redpanda |
 | gateway | gateway | NGINX, API Gateway |
 | worker (ASG) | worker | member, book, talk |
