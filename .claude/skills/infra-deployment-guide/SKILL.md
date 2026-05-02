@@ -22,7 +22,9 @@ description: Use when deploying or validating QuietChatter infrastructure - cove
 controlplane 노드 접속 후 아래 명령으로 확인한다.
 
 ```bash
-# 노드 상태 (3노드 모두 Ready여야 함)
+# 노드 상태 (배포된 레이어에 따라 다름)
+# 02-platform 배포 후: controlplane 노드만 Ready
+# 03-apps 배포 후: controlplane, gateway, worker 3개 노드 모두 Ready
 sudo kubectl get nodes
 
 # 파드 상태 (quietchatter 네임스페이스)

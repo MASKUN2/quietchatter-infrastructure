@@ -42,32 +42,41 @@ rm -rf "$TMP_DIR"
 
 ## Secret 주입 패턴
 
-sync.sh에서 Secrets Manager → k8s Secret 변환:
+sync.sh에서 Secrets Manager → k8s Secret 변환 (단일 JSON 시크릿 통합 방식):
 
 ```bash
-DB_USERNAME=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-db-username --query 'SecretString' --output text)
-DB_PASSWORD=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-db-password --query 'SecretString' --output text)
-LOKI_URL=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-loki-url --query 'SecretString' --output text)
-LOKI_USER=$(aws secretsmanager get-secret-value --region "$AWS_REGION" --secret-id quietchatter-loki-user --query 'SecretString' --output text)
+SECRETS=$(aws secretsmanager get-secret-value \
+  --region "$AWS_REGION" --secret-id "quietchatter-secrets" \
+  --query 'SecretString' --output text)
+
+DB_PASSWORD=$(echo "$SECRETS" | jq -r '.db_password')
+DB_USERNAME=$(echo "$SECRETS" | jq -r '.db_username')
+GRAFANA_API_KEY=$(echo "$SECRETS" | jq -r '.grafana_api_key')
+LOKI_URL=$(echo "$SECRETS" | jq -r '.loki_url')
+LOKI_USER=$(echo "$SECRETS" | jq -r '.loki_user')
+NAVER_CLIENT_ID=$(echo "$SECRETS" | jq -r '.naver_client_id')
+NAVER_CLIENT_SECRET=$(echo "$SECRETS" | jq -r '.naver_client_secret')
+JWT_SECRET_KEY=$(echo "$SECRETS" | jq -r '.jwt_secret_key')
+INTERNAL_SECRET=$(echo "$SECRETS" | jq -r '.internal_secret')
 
 kubectl create secret generic quietchatter-secrets \
-  --from-literal=DB_USERNAME="$DB_USERNAME" \
+  --namespace=quietchatter \
   --from-literal=DB_PASSWORD="$DB_PASSWORD" \
+  --from-literal=DB_USERNAME="$DB_USERNAME" \
+  --from-literal=GRAFANA_API_KEY="$GRAFANA_API_KEY" \
   --from-literal=LOKI_URL="$LOKI_URL" \
   --from-literal=LOKI_USER="$LOKI_USER" \
-  --namespace=quietchatter \
+  --from-literal=NAVER_CLIENT_ID="$NAVER_CLIENT_ID" \
+  --from-literal=NAVER_CLIENT_SECRET="$NAVER_CLIENT_SECRET" \
+  --from-literal=JWT_SECRET_KEY="$JWT_SECRET_KEY" \
+  --from-literal=INTERNAL_SECRET="$INTERNAL_SECRET" \
   --dry-run=client -o yaml | kubectl apply -f -
 ```
 
 `--dry-run=client -o yaml | kubectl apply -f -` 패턴을 사용하면 Secret이 이미 존재해도 오류 없이 업데이트된다.
 
-현재 등록된 Secrets Manager 시크릿 목록:
-- `quietchatter-db-username`: RDS PostgreSQL 유저명
-- `quietchatter-db-password`: RDS PostgreSQL 비밀번호
-- `quietchatter-k3s-token`: k3s 클러스터 조인 토큰
-- `quietchatter-grafana-api-key`: Grafana Cloud API 키
-- `quietchatter-loki-url`: Grafana Cloud Loki push endpoint URL
-- `quietchatter-loki-user`: Grafana Cloud Loki User ID (숫자형)
+현재 등록된 Secrets Manager 시크릿:
+- `quietchatter-secrets`: 모든 애플리케이션 시크릿을 포함하는 단일 JSON 객체
 
 ## Common Mistakes
 
