@@ -21,9 +21,3 @@ variable "controlplane_private_ip" {
   type        = string
   default     = "10.0.101.100"
 }
-
-variable "platform_private_ip" {
-  description = "Static private IP for the Platform Node (Redpanda)"
-  type        = string
-  default     = "10.0.101.120"
-}

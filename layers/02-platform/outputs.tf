@@ -2,10 +2,6 @@ output "controlplane_private_ip" {
   value = aws_instance.controlplane.private_ip
 }
 
-output "platform_private_ip" {
-  value = aws_instance.platform.private_ip
-}
-
 output "rds_address" {
   value = aws_db_instance.main.address
 }

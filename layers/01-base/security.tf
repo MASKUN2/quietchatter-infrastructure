@@ -150,7 +150,7 @@ resource "aws_security_group" "rds" {
   }
 }
 
-# Control Plane Node Security Group
+# Control Plane Node Security Group (k3s server, Redis, Redpanda)
 resource "aws_security_group" "controlplane" {
   name        = "quietchatter-controlplane-sg"
   description = "Security group for Control Plane (k3s server, Redis)"
@@ -158,9 +158,9 @@ resource "aws_security_group" "controlplane" {
 
   # Redis
   ingress {
-    from_port       = 6379
-    to_port         = 6379
-    protocol        = "tcp"
+    from_port = 6379
+    to_port   = 6379
+    protocol  = "tcp"
     security_groups = [
       aws_security_group.microservices.id,
       aws_security_group.gateway.id
@@ -174,40 +174,6 @@ resource "aws_security_group" "controlplane" {
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
-
-  # Flannel VXLAN
-  ingress {
-    from_port   = 8472
-    to_port     = 8472
-    protocol    = "udp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  # kubelet
-  ingress {
-    from_port   = 10250
-    to_port     = 10250
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "quietchatter-controlplane-sg"
-  }
-}
-
-# Platform Node Security Group (Redpanda)
-resource "aws_security_group" "platform" {
-  name        = "quietchatter-platform-sg"
-  description = "Security group for Platform node (Redpanda)"
-  vpc_id      = aws_vpc.main.id
 
   # Redpanda Kafka
   ingress {
@@ -286,6 +252,6 @@ resource "aws_security_group" "platform" {
   }
 
   tags = {
-    Name = "quietchatter-platform-sg"
+    Name = "quietchatter-controlplane-sg"
   }
 }

@@ -74,10 +74,6 @@ output "rds_sg_id" {
   value = aws_security_group.rds.id
 }
 
-output "platform_sg_id" {
-  value = aws_security_group.platform.id
-}
-
 output "naver_client_id_secret_name" {
   value = aws_secretsmanager_secret.naver_client_id.name
 }
