@@ -49,7 +49,7 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 
 ## 예상 비용
 
-- 서울 리전 기준 월 총합 약 10.80 달러 (4노드: controlplane t4g.micro + platform t4g.micro + gateway t4g.micro + worker t4g.small Spot)
+- 서울 리전 기준 월 총합 약 10.80 달러 (3노드: controlplane t4g.small + gateway t4g.micro + worker t4g.small Spot)
 
 ---
 
