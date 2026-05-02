@@ -50,7 +50,7 @@ resource "aws_db_instance" "main" {
 
   db_name  = "quietchatter"
   username = data.terraform_remote_state.base.outputs.db_username
-  password = data.aws_secretsmanager_secret_version.db_password.secret_string
+  password = jsondecode(data.aws_secretsmanager_secret_version.app_secrets.secret_string)["db_password"]
 
   allocated_storage = 20
   storage_type      = "gp3"

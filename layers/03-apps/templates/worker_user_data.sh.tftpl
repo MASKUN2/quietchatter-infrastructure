@@ -42,10 +42,12 @@ log "STEP 2: SSM 에이전트를 활성화합니다..."
 # 3. k3s agent 설치
 log "STEP 3: k3s agent를 설치합니다..."
 {
+  dnf install -y jq
+
   K3S_TOKEN=$(aws secretsmanager get-secret-value \
     --region ${aws_region} \
     --secret-id "${k3s_token_secret}" \
-    --query 'SecretString' --output text)
+    --query 'SecretString' --output text | jq -r '.k3s_token')
 
   until curl -sk --connect-timeout 3 https://${k3s_server_ip}:6443 > /dev/null 2>&1; do
     log "k3s server(${k3s_server_ip}) 대기 중..."

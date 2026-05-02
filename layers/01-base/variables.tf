@@ -112,3 +112,10 @@ variable "k3s_token" {
   default     = ""
 }
 
+variable "internal_secret" {
+  description = "Shared secret for internal service-to-service communication (X-Internal-Secret header)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+

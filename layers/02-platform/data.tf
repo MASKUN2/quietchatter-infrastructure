@@ -7,6 +7,6 @@ data "terraform_remote_state" "base" {
   }
 }
 
-data "aws_secretsmanager_secret_version" "db_password" {
+data "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = data.terraform_remote_state.base.outputs.db_password_secret_name
 }

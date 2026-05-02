@@ -18,26 +18,6 @@ output "gateway_private_ip" {
   value = var.gateway_private_ip
 }
 
-output "db_password_secret_name" {
-  value = aws_secretsmanager_secret.db_password.name
-}
-
-output "grafana_api_key_secret_name" {
-  value = aws_secretsmanager_secret.grafana_api_key.name
-}
-
-output "db_username" {
-  value = var.db_username
-}
-
-output "grafana_cloud_user" {
-  value = var.grafana_cloud_user
-}
-
-output "grafana_cloud_logs_url" {
-  value = var.grafana_cloud_logs_url
-}
-
 output "public_subnet_ids" {
   value = aws_subnet.public[*].id
 }
@@ -74,14 +54,6 @@ output "rds_sg_id" {
   value = aws_security_group.rds.id
 }
 
-output "naver_client_id_secret_name" {
-  value = aws_secretsmanager_secret.naver_client_id.name
-}
-
-output "naver_client_secret_secret_name" {
-  value = aws_secretsmanager_secret.naver_client_secret.name
-}
-
 output "nat_instance_id" {
   value = aws_instance.nat.id
 }
@@ -98,10 +70,29 @@ output "infra_assets_bucket_arn" {
   value = aws_s3_bucket.infra_assets.arn
 }
 
-output "k3s_token_secret_name" {
-  value = aws_secretsmanager_secret.k3s_token.name
+output "db_username" {
+  value = var.db_username
 }
 
-output "db_username_secret_name" {
-  value = aws_secretsmanager_secret.db_username.name
+output "grafana_cloud_user" {
+  value = var.grafana_cloud_user
+}
+
+output "grafana_cloud_logs_url" {
+  value = var.grafana_cloud_logs_url
+}
+
+# Consolidated secret - used by all layers that need to fetch secrets
+output "app_secret_name" {
+  value = aws_secretsmanager_secret.app_secrets.name
+}
+
+# Kept for compatibility with 02-platform and 03-apps user_data templates
+output "k3s_token_secret_name" {
+  value = aws_secretsmanager_secret.app_secrets.name
+}
+
+# Kept for compatibility with 02-platform/data.tf (RDS password)
+output "db_password_secret_name" {
+  value = aws_secretsmanager_secret.app_secrets.name
 }

@@ -23,8 +23,8 @@ instructions: |-
 
 - 01-base
 	- NAT 노드: 프라이빗 서브넷 인터넷 아웃바운드 라우팅, iptables VPC CIDR 마스커레이딩
-	- 공통 기반: 전체 레이어 보안 그룹, IAM/SSM 프로파일, Secrets Manager 시크릿, S3 자산 버킷 관리
-	- k3s 클러스터 토큰: Secrets Manager에 저장, 모든 노드 부팅 시 조회
+	- 공통 기반: 전체 레이어 보안 그룹, IAM/SSM 프로파일, Secrets Manager 시크릿(단일 JSON), S3 자산 버킷 관리
+	- 시크릿 관리: 모든 애플리케이션 시크릿을 단일 JSON 시크릿(quietchatter-secrets)으로 통합 관리. sync.sh가 jq로 파싱하여 k8s Secret 오브젝트로 변환
 
 - 02-platform
 	- Controlplane 노드(t4g.small): k3s server, Redis StatefulSet, Redpanda StatefulSet 구동
@@ -73,9 +73,9 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 - 채택 이유: 포트폴리오 규모에서 ArgoCD 운영 비용(메모리, 복잡도) 대비 효용이 낮아 단순화
 
 시크릿 주입(sync.sh 수동 변환):
-- 현재: sync.sh가 AWS Secrets Manager 값을 조회해 kubectl create secret으로 k8s Secret을 직접 생성
+- 현재: sync.sh가 AWS Secrets Manager의 단일 JSON 시크릿(quietchatter-secrets)을 jq로 파싱해 kubectl create secret으로 k8s Secret을 직접 생성. 파드는 deployment.yaml의 secretKeyRef로 env var 주입
 - 표준: External Secrets Operator(ESO). k8s CRD로 선언하면 ESO가 Secrets Manager를 감시하며 자동 동기화
-- 채택 이유: ESO 설치 및 CRD 관리 복잡도 대비 소규모 시크릿 수가 적어 현재는 수동으로 충분
+- 채택 이유: ESO 설치 및 CRD 관리 복잡도 대비 소규모 운영에서는 수동으로 충분
 
 ## 과거 의사결정
 
@@ -93,3 +93,4 @@ Controlplane의 systemd timer(5분 주기)가 sync.sh를 실행하여 kubectl ap
 - Rolling Update 전략 수정 (2026-04-28): Worker 노드 1개 환경에서 maxSurge=1(기본값) 사용 시 업데이트 파드가 Pending 상태로 멈추는 문제 해결. 모든 Deployment(api-gateway, member, book, talk)에 maxSurge: 0, maxUnavailable: 1 적용
 - Ghost Node 처리 (2026-04-28): Spot 인스턴스 종료 후 k3s 노드 레코드가 자동 삭제되지 않아 NotReady 노드와 Terminating DaemonSet 파드가 남는 문제 확인. 수동으로 kubectl delete node 처리. AWS Node Termination Handler 도입을 예정 작업으로 등록
 - 서비스 템플릿 미동기화 수정 (2026-04-29): 인프라 레벨에서 S3 매니페스트에 Rolling Update 전략을 직접 패치했으나 서비스 서브모듈 k8s/deployment.yaml에는 반영되지 않음. 다음 GitHub Actions 실행 시 변경이 롤백될 수 있었던 문제를 사후 발견. 4개 서비스 템플릿에 strategy 블록 추가 커밋. scripts/sync.sh에도 Loki 시크릿 조회 코드 누락 및 금지 패턴(|| echo "") 존재 확인, S3 원본과 동기화하여 수정
+- Secrets Manager 시크릿 통합 (2026-05-02): 9개 개별 시크릿을 단일 JSON 시크릿(quietchatter-secrets)으로 통합. Secrets Manager 비용 $3.60 → $0.40/월 절감. IAM 인라인 정책 Resource를 9개 ARN에서 1개로 축소. sync.sh를 jq 기반 단일 조회 방식으로 변경하고 k8s Secret에 NAVER_CLIENT_ID, NAVER_CLIENT_SECRET, JWT_SECRET_KEY, INTERNAL_SECRET 항목 추가. user_data 3개 템플릿에 dnf install jq 및 k3s_token JSON 파싱 추가. 02-platform data.tf의 db_password 조회를 jsondecode 방식으로 변경

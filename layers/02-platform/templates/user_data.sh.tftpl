@@ -35,10 +35,12 @@ log "STEP 1: Swap 파일을 생성합니다..."
 # 2. k3s server 설치
 log "STEP 2: k3s server를 설치합니다..."
 {
+  dnf install -y jq
+
   K3S_TOKEN=$(aws secretsmanager get-secret-value \
     --region ${aws_region} \
     --secret-id "${k3s_token_secret}" \
-    --query 'SecretString' --output text)
+    --query 'SecretString' --output text | jq -r '.k3s_token')
 
   curl -sfL https://get.k3s.io | K3S_TOKEN="$K3S_TOKEN" sh -s - server \
     --disable=traefik \
