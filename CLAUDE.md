@@ -47,5 +47,13 @@
 
 ### k8s 운영
 
-- Ghost Node: Spot 인스턴스 종료 후 k3s 노드 레코드가 자동 삭제되지 않음. NotReady 노드가 남아 있으면 수동으로 kubectl delete node 처리 필요
+- Ghost Node: Spot 인스턴스 종료 후 k3s 노드 레코드가 자동 삭제되지 않음. sync.sh가 15분 이상 NotReady인 노드를 자동 삭제한다. 수동 처리가 필요한 경우 kubectl delete node --ignore-not-found 사용 (--force 금지).
 - Rolling Update: Worker 노드 단일 구성 시 maxSurge: 0, maxUnavailable: 1 적용 필수. 기본값(maxSurge=1)은 단일 노드에서 Pending 상태로 업데이트가 멈춤
+
+## 문서 업데이트 원칙
+
+인프라 작업 후 아래 기준에 해당하면 이 CLAUDE.md 또는 README.md를 업데이트하십시오.
+
+- 새로운 운영 패턴, 자동화 로직, 또는 수동 절차가 추가된 경우
+- 기존 지침이 현재 구현과 달라진 경우 (예: 수동 처리 → 자동화 전환)
+- 장애 원인과 조치 방법이 확인되어 재발 방지 지식으로 남길 필요가 있는 경우
