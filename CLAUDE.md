@@ -21,6 +21,9 @@
 ### C. 인프라 자산 관리 (S3 Assets)
 
 - sync.sh와 k8s 매니페스트는 S3 버킷(s3://quietchatter-infra-assets/controlplane/)에서 관리된다.
+- sync.sh와 k8s 매니페스트를 읽거나 수정하기 전에 반드시 S3에서 원본을 내려받아야 한다. 프로젝트 로컬 경로에 있는 동명 파일은 S3와 내용이 다를 수 있으므로 원본으로 신뢰하지 않는다.
+  - sync.sh: `aws s3 cp s3://quietchatter-infra-assets/controlplane/sync.sh /tmp/sync_s3.sh --region ap-northeast-2`
+  - 매니페스트: `aws s3 sync s3://quietchatter-infra-assets/controlplane/manifests/ /tmp/manifests/ --region ap-northeast-2`
 - 읽기/수정이 필요하면 세션 내 임시경로(mktemp -d)로 내려받아 작업하고 업로드한다. 프로젝트 경로 안에 저장하지 않는다.
 - 각 마이크로서비스의 k8s/deployment.yaml(IMAGE_PLACEHOLDER 포함 템플릿)이 매니페스트 구조의 원본이다. S3를 직접 수정했다면 반드시 서비스 템플릿에도 반영하고 커밋해야 한다. 그렇지 않으면 다음 GitHub Actions 실행 시 변경이 롤백된다.
 
