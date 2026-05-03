@@ -17,6 +17,7 @@
 - 리소스 참조: 레이어 간 데이터 전달은 terraform_remote_state 사용
 - 명명 규칙: quietchatter- 접두사 필수 사용
 - 검증: 코드 수정 후 반드시 terraform validate 실행
+- 파일 치환(replace) 시 퍼지 매칭(Fuzzy Match)으로 인한 의도치 않은 코드 삭제를 막기 위해, 항상 파일 원본을 먼저 읽고 정확한 대상 문자열을 지정하십시오.
 
 ### C. 인프라 자산 관리 (S3 Assets)
 
