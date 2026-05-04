@@ -24,7 +24,7 @@ resource "aws_instance" "controlplane" {
   }
 
   lifecycle {
-    ignore_changes = [ami]
+    ignore_changes = [ami, user_data]
   }
 
   tags = {
@@ -66,8 +66,9 @@ resource "aws_db_instance" "main" {
   backup_window           = "18:00-19:00"
   maintenance_window      = "Mon:19:00-Mon:20:00"
 
-  deletion_protection = true
-  skip_final_snapshot = true
+  deletion_protection          = true
+  skip_final_snapshot          = false
+  final_snapshot_identifier    = "quietchatter-db-final-snapshot"
 
   tags = {
     Name = "quietchatter-db"
