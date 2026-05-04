@@ -86,8 +86,8 @@ resource "aws_security_group" "microservices" {
   vpc_id      = aws_vpc.main.id
 
   ingress {
-    from_port = 0
-    to_port   = 65535
+    from_port = 30000
+    to_port   = 32767
     protocol  = "tcp"
     security_groups = [
       aws_security_group.gateway.id
