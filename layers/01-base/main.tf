@@ -143,6 +143,14 @@ resource "aws_s3_bucket" "infra_assets" {
   }
 }
 
+resource "aws_s3_bucket_versioning" "infra_assets" {
+  bucket = aws_s3_bucket.infra_assets.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "infra_assets" {
   bucket = aws_s3_bucket.infra_assets.id
 
