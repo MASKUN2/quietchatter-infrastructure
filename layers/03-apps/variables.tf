@@ -10,9 +10,4 @@ variable "ami_id" {
   default     = "ami-0e31683998cedb019"
 }
 
-variable "api_gateway_image" {
-  description = "Docker image for the API Gateway (Spring Cloud Gateway)"
-  type        = string
-  default     = "maskun2/quietchatter-microservice-api-gateway:latest"
-}
 

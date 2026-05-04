@@ -28,11 +28,11 @@ instructions: |-
 
 - 02-platform
 	- Controlplane 노드(t4g.small): k3s server, Redis StatefulSet, Redpanda StatefulSet 구동
-	- RDS PostgreSQL: AWS 관리형 db.t4g.micro, 프라이빗 서브넷 배치
+	- RDS PostgreSQL 17: AWS 관리형 db.t4g.micro, 프라이빗 서브넷 배치
 
 - 03-apps
 	- Gateway 노드(t4g.micro, 퍼블릭): k3s agent, EIP 고정. NGINX(HostNetwork) + Spring Cloud Gateway Pod
-	- Worker ASG(t4g.small, Spot-only, min=1/max=3): k3s agent. 3개 마이크로서비스 Pod 실행(member, book, talk). CPU 70% 초과 시 자동 스케일아웃
+	- Worker ASG(t4g.small / t4g.medium 혼합 Spot, min=1/max=3): k3s agent. 3개 마이크로서비스 Pod 실행(member, book, talk). CPU 70% 초과 시 자동 스케일아웃
 
 ## 워크로드 배포 방식
 

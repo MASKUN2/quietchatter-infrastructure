@@ -29,7 +29,6 @@ resource "aws_instance" "gateway" {
     s3_bucket_name   = data.terraform_remote_state.base.outputs.infra_assets_bucket_name
     k3s_server_ip    = data.terraform_remote_state.platform.outputs.controlplane_private_ip
     k3s_token_secret = data.terraform_remote_state.base.outputs.k3s_token_secret_name
-    service_image    = var.api_gateway_image
     instance_name    = "quietchatter-gateway-node"
     loki_url         = data.terraform_remote_state.base.outputs.grafana_cloud_logs_url
     loki_user        = data.terraform_remote_state.base.outputs.grafana_cloud_user

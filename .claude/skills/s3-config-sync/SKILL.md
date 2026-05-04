@@ -76,7 +76,7 @@ kubectl create secret generic quietchatter-secrets \
 `--dry-run=client -o yaml | kubectl apply -f -` 패턴을 사용하면 Secret이 이미 존재해도 오류 없이 업데이트된다.
 
 현재 등록된 Secrets Manager 시크릿:
-- `quietchatter-secrets`: 모든 애플리케이션 시크릿을 포함하는 단일 JSON 객체
+- `quietchatter-secrets`: 모든 애플리케이션 시크릿을 포함하는 단일 JSON 객체. `k3s_token`도 이 객체에 포함되어 있으며, EC2 user_data 스크립트가 jq로 파싱하여 노드 클러스터 참여에 사용한다. `k3s_token`은 k8s Secret으로는 변환하지 않는다.
 
 ## Common Mistakes
 

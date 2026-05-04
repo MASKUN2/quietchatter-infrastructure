@@ -41,7 +41,7 @@ sudo kubectl logs <pod-name> -n quietchatter
 
 - controlplane (10.0.101.100, t4g.small): k3s server + Redis + Redpanda
 - gateway (퍼블릭, t4g.micro): NGINX + api-gateway
-- worker ASG (t4g.small, Spot): 3개 마이크로서비스 (member, book, talk)
+- worker ASG (t4g.small / t4g.medium 혼합 Spot, min=1/max=3): 3개 마이크로서비스 (member, book, talk)
 
 ## S3 매니페스트 배포 확인
 
@@ -69,15 +69,17 @@ strategy:
 
 ## Ghost Node 처리
 
-Spot 인스턴스가 종료되어도 k3s는 노드 레코드를 자동으로 삭제하지 않는다. NotReady 노드가 남아 있으면 alloy 등 DaemonSet 파드가 해당 노드에서 Terminating 상태로 멈출 수 있다.
+Spot 인스턴스가 종료되어도 k3s는 노드 레코드를 자동으로 삭제하지 않는다. sync.sh가 15분 이상 NotReady 상태인 노드를 자동으로 삭제한다. NotReady 노드가 남아 있으면 alloy 등 DaemonSet 파드가 해당 노드에서 Terminating 상태로 멈출 수 있다.
+
+수동 처리가 필요한 경우:
 
 ```bash
 # NotReady 노드 확인
-kubectl get nodes
+sudo kubectl get nodes
 
-# 종료된 노드 삭제 (EC2 콘솔에서 인스턴스 종료 확인 후)
-kubectl delete node <node-name>
+# 종료된 노드 삭제 (EC2 콘솔에서 인스턴스 종료 확인 후, --force 금지)
+sudo kubectl delete node <node-name> --ignore-not-found
 
 # 멈춘 파드 강제 삭제
-kubectl delete pods -n quietchatter -l app=alloy --force --grace-period=0
+sudo kubectl delete pods -n quietchatter -l app=alloy --force --grace-period=0
 ```

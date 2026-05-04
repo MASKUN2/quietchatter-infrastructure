@@ -20,8 +20,12 @@ description: Use when configuring or troubleshooting k8s node labels, nodeSelect
 
 kubelet은 보안 정책상 `kubernetes.io/*` 네임스페이스 라벨을 `--node-label`로 설정하는 것을 금지한다 (k8s 1.24+). 커스텀 접두사만 허용된다.
 
+노드 이름은 `--node-name` 플래그로 `quietchatter-<role>-<instance-id>` 형식으로 고정한다. Spot 인스턴스 교체 시 동일한 이름이 재사용되어 Ghost Node 충돌을 방지한다.
+
 ```bash
 # 올바른 형식
+INSTANCE_ID=$(curl -s http://169.254.169.254/latest/meta-data/instance-id)
+--node-name="quietchatter-worker-$INSTANCE_ID" \
 --node-label="quietchatter.io/role=worker"
 
 # 금지 - kubelet이 거부함
