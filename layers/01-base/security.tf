@@ -162,8 +162,7 @@ resource "aws_security_group" "controlplane" {
     to_port   = 6379
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.microservices.id,
-      aws_security_group.gateway.id
+      aws_security_group.microservices.id
     ]
   }
 
@@ -181,8 +180,7 @@ resource "aws_security_group" "controlplane" {
     to_port   = 9092
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.microservices.id,
-      aws_security_group.gateway.id
+      aws_security_group.microservices.id
     ]
   }
 
@@ -191,8 +189,7 @@ resource "aws_security_group" "controlplane" {
     to_port   = 19092
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.microservices.id,
-      aws_security_group.gateway.id
+      aws_security_group.microservices.id
     ]
   }
 
@@ -202,8 +199,7 @@ resource "aws_security_group" "controlplane" {
     to_port   = 9644
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.microservices.id,
-      aws_security_group.gateway.id
+      aws_security_group.microservices.id
     ]
   }
 
@@ -213,8 +209,7 @@ resource "aws_security_group" "controlplane" {
     to_port   = 8081
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.microservices.id,
-      aws_security_group.gateway.id
+      aws_security_group.microservices.id
     ]
   }
 
@@ -223,8 +218,7 @@ resource "aws_security_group" "controlplane" {
     to_port   = 18081
     protocol  = "tcp"
     security_groups = [
-      aws_security_group.microservices.id,
-      aws_security_group.gateway.id
+      aws_security_group.microservices.id
     ]
   }
 
